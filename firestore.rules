@@ -1,0 +1,206 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function usuarioAutorizado() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'mauricio.ariel.buda@gmail.com',
+          'wakeuprodiaz@gmail.com'
+        ];
+    }
+
+    function montoValido(monto) {
+      return monto is int && monto > 0;
+    }
+
+    function fechaValida(fecha) {
+      return fecha is string
+        && fecha.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$');
+    }
+
+    function periodoValido(periodo) {
+      return periodo is string
+        && periodo.matches('^[0-9]{4}-(0[1-9]|1[0-2])$');
+    }
+
+    function categoriaExiste(id) {
+      return exists(/databases/$(database)/documents/categorias/$(id));
+    }
+
+    function categoriaActiva(id) {
+      return categoriaExiste(id)
+        && get(/databases/$(database)/documents/categorias/$(id)).data.activo == true;
+    }
+
+    function medioPagoExiste(id) {
+      return exists(/databases/$(database)/documents/mediosPago/$(id));
+    }
+
+    function medioPagoActivo(id) {
+      return medioPagoExiste(id)
+        && get(/databases/$(database)/documents/mediosPago/$(id)).data.activo == true;
+    }
+
+    function gastoValido(datos) {
+      return datos.keys().hasOnly([
+          'monto', 'fecha', 'categoriaId', 'medioPagoId', 'responsable',
+          'creadoEn', 'actualizadoEn'
+        ])
+        && datos.keys().hasAll([
+          'monto', 'fecha', 'categoriaId', 'medioPagoId', 'responsable',
+          'creadoEn', 'actualizadoEn'
+        ])
+        && montoValido(datos.monto)
+        && fechaValida(datos.fecha)
+        && datos.categoriaId is string
+        && datos.medioPagoId is string
+        && datos.responsable in ['mauri', 'ro']
+        && datos.creadoEn is timestamp
+        && datos.actualizadoEn is timestamp;
+    }
+
+    function mesValido(periodo, datos) {
+      return datos.keys().hasOnly([
+          'periodo', 'sueldoMauri', 'sueldoRo', 'observacionSaldo',
+          'creadoEn', 'actualizadoEn'
+        ])
+        && datos.keys().hasAll(['periodo', 'observacionSaldo', 'creadoEn', 'actualizadoEn'])
+        && periodoValido(periodo)
+        && datos.periodo == periodo
+        && datos.observacionSaldo is string
+        && datos.observacionSaldo.size() <= 10000
+        && datos.creadoEn is timestamp
+        && datos.actualizadoEn is timestamp
+        && (datos.get('sueldoMauri', null) == null
+          || (datos.get('sueldoMauri', null) is int && datos.get('sueldoMauri', null) >= 0))
+        && (datos.get('sueldoRo', null) == null
+          || (datos.get('sueldoRo', null) is int && datos.get('sueldoRo', null) >= 0));
+    }
+
+    function ingresoValido(datos) {
+      return datos.keys().hasOnly(['monto', 'procedencia', 'creadoEn', 'actualizadoEn'])
+        && datos.keys().hasAll(['monto', 'procedencia', 'creadoEn', 'actualizadoEn'])
+        && montoValido(datos.monto)
+        && datos.procedencia is string
+        && datos.procedencia.size() > 0
+        && datos.procedencia.size() <= 300
+        && datos.creadoEn is timestamp
+        && datos.actualizadoEn is timestamp;
+    }
+
+    function catalogoValido(datos) {
+      return datos.keys().hasOnly([
+          'nombre', 'nombreNormalizado', 'activo', 'orden', 'protegida',
+          'inicial', 'creadoEn', 'actualizadoEn'
+        ])
+        && datos.keys().hasAll([
+          'nombre', 'nombreNormalizado', 'activo', 'orden', 'protegida',
+          'inicial', 'creadoEn', 'actualizadoEn'
+        ])
+        && datos.nombre is string
+        && datos.nombre.size() > 0
+        && datos.nombreNormalizado is string
+        && datos.nombreNormalizado.size() > 0
+        && datos.activo is bool
+        && datos.orden is int
+        && datos.orden >= 0
+        && datos.protegida is bool
+        && datos.inicial is bool
+        && datos.creadoEn is timestamp
+        && datos.actualizadoEn is timestamp;
+    }
+
+    function indiceValido(datos) {
+      return datos.keys().hasOnly(['referenciaId', 'nombreNormalizado', 'actualizadoEn'])
+        && datos.keys().hasAll(['referenciaId', 'nombreNormalizado', 'actualizadoEn'])
+        && datos.referenciaId is string
+        && datos.nombreNormalizado is string
+        && datos.nombreNormalizado.size() > 0
+        && datos.actualizadoEn is timestamp;
+    }
+
+    // Gastos: una colección global. El campo fecha determina el mes al que pertenecen.
+    match /gastos/{gastoId} {
+      allow read: if usuarioAutorizado();
+      allow create: if usuarioAutorizado()
+        && gastoValido(request.resource.data)
+        && categoriaActiva(request.resource.data.categoriaId)
+        && medioPagoActivo(request.resource.data.medioPagoId);
+      allow update: if usuarioAutorizado()
+        && gastoValido(request.resource.data)
+        && request.resource.data.creadoEn == resource.data.creadoEn
+        && categoriaExiste(request.resource.data.categoriaId)
+        && medioPagoExiste(request.resource.data.medioPagoId)
+        && (request.resource.data.categoriaId == resource.data.categoriaId
+          || categoriaActiva(request.resource.data.categoriaId))
+        && (request.resource.data.medioPagoId == resource.data.medioPagoId
+          || medioPagoActivo(request.resource.data.medioPagoId));
+      allow delete: if usuarioAutorizado();
+    }
+
+    // Datos mensuales: los sueldos pueden estar ausentes hasta que se carguen.
+    match /meses/{periodo} {
+      allow read: if usuarioAutorizado();
+      allow create: if usuarioAutorizado() && mesValido(periodo, request.resource.data);
+      allow update: if usuarioAutorizado()
+        && mesValido(periodo, request.resource.data)
+        && request.resource.data.creadoEn == resource.data.creadoEn;
+      allow delete: if false;
+
+      match /ingresosAdicionales/{ingresoId} {
+        allow read: if usuarioAutorizado() && periodoValido(periodo);
+        allow create: if usuarioAutorizado()
+          && periodoValido(periodo)
+          && ingresoValido(request.resource.data);
+        allow update: if usuarioAutorizado()
+          && periodoValido(periodo)
+          && ingresoValido(request.resource.data)
+          && request.resource.data.creadoEn == resource.data.creadoEn;
+        allow delete: if usuarioAutorizado() && periodoValido(periodo);
+      }
+    }
+
+    // Categorías: las opciones protegidas no se pueden editar ni eliminar.
+    // Las opciones normales se eliminan mediante baja lógica (activo = false).
+    match /categorias/{categoriaId} {
+      allow read: if usuarioAutorizado();
+      allow create: if usuarioAutorizado() && catalogoValido(request.resource.data);
+      allow update: if usuarioAutorizado()
+        && catalogoValido(request.resource.data)
+        && resource.data.protegida == false
+        && request.resource.data.protegida == resource.data.protegida
+        && request.resource.data.inicial == resource.data.inicial
+        && request.resource.data.creadoEn == resource.data.creadoEn;
+      allow delete: if false;
+    }
+
+    // Medios de pago: Efectivo, Débito y Otros son opciones protegidas.
+    match /mediosPago/{medioPagoId} {
+      allow read: if usuarioAutorizado();
+      allow create: if usuarioAutorizado() && catalogoValido(request.resource.data);
+      allow update: if usuarioAutorizado()
+        && catalogoValido(request.resource.data)
+        && resource.data.protegida == false
+        && request.resource.data.protegida == resource.data.protegida
+        && request.resource.data.inicial == resource.data.inicial
+        && request.resource.data.creadoEn == resource.data.creadoEn;
+      allow delete: if false;
+    }
+
+    // Índices internos para evitar nombres duplicados incluso si ambos usuarios
+    // intentan crear la misma categoría o medio de pago al mismo tiempo.
+    match /indicesCategorias/{indiceId} {
+      allow read: if usuarioAutorizado();
+      allow create, update: if usuarioAutorizado() && indiceValido(request.resource.data);
+      allow delete: if usuarioAutorizado();
+    }
+
+    match /indicesMediosPago/{indiceId} {
+      allow read: if usuarioAutorizado();
+      allow create, update: if usuarioAutorizado() && indiceValido(request.resource.data);
+      allow delete: if usuarioAutorizado();
+    }
+  }
+}

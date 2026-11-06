@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#eee4d5" />
+    <meta name="description" content="Control privado de gastos compartidos de Mauri y Ro." />
+    <title>Gastos | Control compartido</title>
+  </head>
+  <body>
+    <div class="pantalla-espera-inicial" id="pantalla-espera-inicial" role="status" aria-live="polite">
+      <div class="pantalla-espera-inicial__tarjeta">
+        <span class="indicador-carga indicador-carga--grande" aria-hidden="true"></span>
+        <strong>Preparando Gastos</strong>
+        <span>Estamos comprobando tu sesión segura.</span>
+      </div>
+    </div>
+
+    <div class="aplicacion" id="contenedor-aplicacion" hidden>
+      <header class="encabezado">
+        <a class="marca-aplicacion" href="/" aria-label="Gastos, inicio">
+          <span class="marca-aplicacion__simbolo" aria-hidden="true">$</span>
+          <span class="marca-aplicacion__texto">Gastos</span>
+        </a>
+        <div class="encabezado__usuario" id="encabezado-usuario" hidden>
+          <span class="encabezado__correo" id="correo-encabezado"></span>
+          <button class="boton-texto" id="boton-cerrar-sesion" type="button">Cerrar sesión</button>
+        </div>
+        <span class="encabezado__leyenda" id="leyenda-encabezado">Control compartido</span>
+      </header>
+
+      <main class="contenido-principal">
+        <section class="tarjeta-acceso" id="panel-acceso" aria-labelledby="titulo-principal">
+          <div class="tarjeta-acceso__encabezado">
+            <span class="etiqueta-superior">ESPACIO PRIVADO</span>
+            <h1 id="titulo-principal">Gastos compartidos</h1>
+            <p class="texto-introductorio">Un espacio para organizar y consultar los gastos de Mauri y Ro.</p>
+          </div>
+
+          <div id="estado-aplicacion" class="estado-aplicacion" role="status" aria-live="polite" hidden></div>
+
+          <div id="panel-inicio-sesion" class="panel-inicio-sesion" hidden>
+            <p class="panel-inicio-sesion__texto">Iniciá sesión con una de las dos cuentas autorizadas.</p>
+            <button id="boton-iniciar-sesion" class="boton-principal" type="button">
+              <span class="boton-principal__icono" aria-hidden="true">G</span>
+              Continuar con Google
+            </button>
+          </div>
+
+          <div id="panel-configuracion" class="panel-informacion" hidden>
+            <strong>No se encontró la configuración local.</strong>
+            <p>Copiá <code>.env.example</code> como <code>.env</code> en la raíz del proyecto y reiniciá Vite.</p>
+          </div>
+
+          <p class="nota-privacidad">El acceso está reservado a las cuentas autorizadas de Mauri y Ro.</p>
+        </section>
+
+        <section class="panel-aplicacion" id="panel-aplicacion" hidden>
+          <div class="presentacion-aplicacion">
+            <div>
+              <span class="etiqueta-superior">CONTROL COMPARTIDO</span>
+              <h1>Movimientos</h1>
+              <p>Registrá un gasto o consultá los movimientos de cualquier mes.</p>
+            </div>
+            <span class="insignia-usuario" id="insignia-usuario">M</span>
+          </div>
+
+          <nav class="navegacion-secciones" aria-label="Secciones principales">
+            <button class="boton-navegacion boton-navegacion--activo" id="boton-vista-carga" type="button" aria-current="page">
+              <span aria-hidden="true">＋</span> Cargar gasto
+            </button>
+            <button class="boton-navegacion" id="boton-vista-consulta" type="button">
+              <span aria-hidden="true">☷</span> Consultar gastos
+            </button>
+          </nav>
+
+          <div class="estado-operacion" id="estado-operacion" role="status" aria-live="polite" hidden></div>
+
+          <section class="panel-resumen-mensual" id="panel-resumen-mensual" aria-labelledby="titulo-resumen-mensual">
+            <div class="encabezado-resumen-mensual">
+              <div>
+                <span class="etiqueta-superior">BALANCE COMPARTIDO</span>
+                <h2 id="titulo-resumen-mensual">Resumen mensual</h2>
+                <p id="estado-sueldos-resumen">Los gastos pueden cargarse aunque falte ingresar algún sueldo.</p>
+              </div>
+              <div class="selector-periodo">
+                <label for="selector-mes">Mes de gestión</label>
+                <input id="selector-mes" type="month" />
+              </div>
+            </div>
+
+            <div class="rejilla-resumen-mensual">
+              <article class="tarjeta-resumen tarjeta-resumen--inicial">
+                <span class="tarjeta-resumen__etiqueta">Saldo inicial</span>
+                <button class="tarjeta-resumen__valor boton-detalle-sueldos" id="boton-detalle-sueldos" type="button" aria-expanded="false" aria-controls="detalle-sueldos">
+                  <span id="total-sueldos">—</span>
+                  <span class="indicador-detalle" aria-hidden="true">ⓘ</span>
+                </button>
+                <div class="detalle-sueldos" id="detalle-sueldos" role="tooltip" aria-hidden="true">
+                  <span id="detalle-sueldo-mauri">Mauri: pendiente</span>
+                  <span id="detalle-sueldo-ro">Ro: pendiente</span>
+                </div>
+              </article>
+
+              <article class="tarjeta-resumen">
+                <span class="tarjeta-resumen__etiqueta">Ingresos adicionales</span>
+                <strong class="tarjeta-resumen__valor" id="total-ingresos-adicionales">—</strong>
+              </article>
+
+              <article class="tarjeta-resumen">
+                <span class="tarjeta-resumen__etiqueta">Gastos totales</span>
+                <strong class="tarjeta-resumen__valor" id="total-gastos-mes">—</strong>
+              </article>
+
+              <article class="tarjeta-resumen tarjeta-resumen--disponible" id="tarjeta-saldo-disponible">
+                <span class="tarjeta-resumen__etiqueta">Saldo restante</span>
+                <strong class="tarjeta-resumen__valor" id="saldo-disponible">—</strong>
+              </article>
+            </div>
+
+            <div class="estado-carga-resumen" id="estado-carga-resumen" role="status" aria-live="polite" hidden>
+              <span class="indicador-carga" aria-hidden="true"></span>
+              <span>Actualizando el balance…</span>
+            </div>
+
+            <details class="panel-desplegable panel-sueldos" id="panel-sueldos">
+              <summary>Administrar sueldos del mes</summary>
+              <p class="texto-ayuda-panel">Cada sueldo se carga por separado. Cuando ya está registrado, queda oculto y se puede corregir con el lápiz.</p>
+              <div class="contenedor-sueldos" id="contenedor-sueldos">
+                <p class="mensaje-vacio">Cargando sueldos…</p>
+              </div>
+            </details>
+
+            <details class="panel-desplegable panel-ingresos-adicionales" id="panel-ingresos-adicionales">
+              <summary>
+                <span>Ingresos adicionales</span>
+                <strong id="cantidad-ingresos-adicionales">0</strong>
+              </summary>
+              <form id="formulario-ingreso-adicional" class="formulario-ingreso-adicional" novalidate>
+                <div class="campo-formulario campo-formulario--compacto">
+                  <label for="monto-ingreso-adicional">Monto</label>
+                  <input id="monto-ingreso-adicional" name="monto" type="number" inputmode="numeric" min="1" step="1" placeholder="0" required />
+                </div>
+                <div class="campo-formulario campo-formulario--compacto">
+                  <label for="procedencia-ingreso-adicional">Procedencia</label>
+                  <input id="procedencia-ingreso-adicional" name="procedencia" type="text" maxlength="300" placeholder="Ej.: Instalación de cámaras" required />
+                </div>
+                <button class="boton-secundario boton-agregar-ingreso" id="boton-agregar-ingreso" type="submit">Agregar ingreso</button>
+              </form>
+              <div class="lista-ingresos-adicionales" id="lista-ingresos-adicionales" aria-live="polite">
+                <p class="mensaje-vacio">Todavía no hay ingresos adicionales en este mes.</p>
+              </div>
+            </details>
+
+            <section class="panel-observacion-saldo" aria-labelledby="titulo-observacion-saldo">
+              <div class="encabezado-observacion-saldo">
+                <div>
+                  <h3 id="titulo-observacion-saldo">Destino del saldo restante</h3>
+                  <p id="texto-observacion-saldo">Todavía no agregaron una observación para este mes.</p>
+                </div>
+                <button class="boton-texto boton-observacion" id="boton-observacion" type="button">Agregar observación</button>
+              </div>
+              <form id="formulario-observacion-saldo" class="formulario-observacion-saldo" hidden>
+                <label class="texto-solo-lectores" for="observacion-saldo">Observación del saldo</label>
+                <textarea id="observacion-saldo" rows="3" maxlength="10000" placeholder="Ej.: Lo pusimos en el plazo fijo para que genere intereses."></textarea>
+                <div class="acciones-observacion">
+                  <button class="boton-principal" id="boton-guardar-observacion" type="submit">Guardar observación</button>
+                  <button class="boton-secundario" id="boton-cancelar-observacion" type="button">Cancelar</button>
+                </div>
+              </form>
+            </section>
+          </section>
+
+          <section class="panel-funcional" id="vista-carga" aria-labelledby="titulo-carga">
+            <div class="encabezado-panel">
+              <div>
+                <span class="etiqueta-superior">NUEVO MOVIMIENTO</span>
+                <h2 id="titulo-carga">Cargar gasto</h2>
+                <p>Completá los datos principales. La fecha se completa automáticamente.</p>
+              </div>
+            </div>
+
+            <form id="formulario-gasto" class="formulario-gasto" novalidate>
+              <div class="campo-formulario campo-formulario--destacado">
+                <label for="monto-gasto">Monto <span aria-hidden="true">*</span></label>
+                <div class="campo-monto-contenedor">
+                  <span aria-hidden="true">$</span>
+                  <input id="monto-gasto" name="monto" type="number" inputmode="numeric" min="1" step="1" placeholder="0" required autocomplete="off" />
+                </div>
+                <small>Pesos argentinos, sin centavos.</small>
+              </div>
+
+              <div class="rejilla-campos">
+                <div class="campo-formulario">
+                  <label for="categoria-gasto">Categoría <span aria-hidden="true">*</span></label>
+                  <select id="categoria-gasto" name="categoriaId" required>
+                    <option value="">Cargando categorías…</option>
+                  </select>
+                  <div class="campo-personalizado" id="contenedor-categoria-personalizada" hidden>
+                    <label for="categoria-personalizada">Nueva categoría</label>
+                    <input id="categoria-personalizada" type="text" maxlength="60" placeholder="Ej.: Veterinaria" autocomplete="off" />
+                  </div>
+                </div>
+
+                <div class="campo-formulario">
+                  <label for="medio-pago-gasto">Medio de pago <span aria-hidden="true">*</span></label>
+                  <select id="medio-pago-gasto" name="medioPagoId" required>
+                    <option value="">Cargando medios de pago…</option>
+                  </select>
+                  <div class="campo-personalizado" id="contenedor-medio-personalizado" hidden>
+                    <label for="medio-personalizado">Nuevo medio de pago</label>
+                    <input id="medio-personalizado" type="text" maxlength="60" placeholder="Ej.: Mercado Pago" autocomplete="off" />
+                  </div>
+                </div>
+
+                <div class="campo-formulario">
+                  <label for="responsable-gasto">Quién realizó el gasto <span aria-hidden="true">*</span></label>
+                  <select id="responsable-gasto" name="responsable" required>
+                    <option value="mauri">Mauri</option>
+                    <option value="ro">Ro</option>
+                  </select>
+                </div>
+
+                <div class="campo-formulario">
+                  <label for="fecha-gasto">Fecha del gasto <span aria-hidden="true">*</span></label>
+                  <input id="fecha-gasto" name="fecha" type="date" required />
+                  <small>Se completa con la fecha de hoy y podés modificarla.</small>
+                </div>
+              </div>
+
+              <div class="acciones-formulario">
+                <button class="boton-principal" id="boton-guardar-gasto" type="submit">Guardar gasto</button>
+                <button class="boton-secundario" id="boton-cancelar-edicion" type="button" hidden>Cancelar edición</button>
+              </div>
+              <p class="ayuda-formulario">El gasto se descuenta del balance compartido, independientemente de quién lo haya realizado.</p>
+            </form>
+          </section>
+
+          <section class="panel-funcional" id="vista-consulta" aria-labelledby="titulo-consulta" hidden>
+            <div class="encabezado-panel encabezado-panel--consulta">
+              <div>
+                <span class="etiqueta-superior">HISTORIAL</span>
+                <h2 id="titulo-consulta">Movimientos</h2>
+                <p>Los gastos se ordenan por fecha, del más reciente al más antiguo.</p>
+              </div>
+            </div>
+
+            <div class="resumen-listado" id="resumen-listado">
+              <span id="cantidad-movimientos">Cargando movimientos…</span>
+              <strong id="total-movimientos"></strong>
+            </div>
+            <div class="lista-movimientos" id="lista-movimientos" aria-live="polite">
+              <p class="mensaje-vacio">Cargando movimientos…</p>
+            </div>
+          </section>
+        </section>
+
+        <footer class="pie-pagina" id="pie-pagina">
+          <span>Gastos</span>
+          <span>Uso privado</span>
+        </footer>
+      </main>
+
+      <dialog class="dialogo-edicion-ingreso" id="dialogo-edicion-ingreso" aria-labelledby="titulo-dialogo-ingreso">
+        <form id="formulario-editar-ingreso" class="formulario-dialogo" novalidate>
+          <div class="encabezado-panel">
+            <span class="etiqueta-superior">INGRESO ADICIONAL</span>
+            <h2 id="titulo-dialogo-ingreso">Editar ingreso</h2>
+            <p>Podés corregir el monto o la procedencia.</p>
+          </div>
+          <div class="campo-formulario">
+            <label for="monto-ingreso-edicion">Monto</label>
+            <input id="monto-ingreso-edicion" type="number" inputmode="numeric" min="1" step="1" required />
+          </div>
+          <div class="campo-formulario">
+            <label for="procedencia-ingreso-edicion">Procedencia</label>
+            <input id="procedencia-ingreso-edicion" type="text" maxlength="300" required />
+          </div>
+          <div class="acciones-formulario">
+            <button class="boton-principal" id="boton-guardar-ingreso-editado" type="submit">Guardar cambios</button>
+            <button class="boton-secundario" id="boton-cancelar-ingreso-editado" type="button">Cancelar</button>
+          </div>
+        </form>
+      </dialog>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

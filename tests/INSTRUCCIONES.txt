@@ -1,0 +1,12 @@
+PRUEBAS AUTOMÁTICAS DE LÓGICA
+
+Desde la raíz del proyecto, ejecutar:
+
+node tests/pruebas-logica.mjs
+node tests/pruebas-etapa-4.mjs
+
+Las pruebas no se conectan a Firebase. Comprueban funciones puras de validación,
+normalización de nombres, fechas, períodos e importes, además de los cálculos de balance.
+
+Después ejecutar npm run dev y seguir documentacion/ETAPA_4_PRUEBAS.md para comprobar
+la integración real con Firebase Authentication y Cloud Firestore.
