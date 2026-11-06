@@ -1,0 +1,21 @@
+GASTOS — ETAPA 6.1 (CORRECCIÓN DE ADMINISTRACIÓN)
+
+Esta entrega corrige un error al abrir «Administrar» en la Etapa 6.
+
+QUÉ SE CORRIGIÓ
+- La función que dibuja las listas de categorías y medios ahora obtiene los contadores directamente del DOM.
+- Los contadores son elementos informativos: si faltara alguno, la administración no se interrumpe.
+- Se valida explícitamente la presencia de los contenedores de listas y se muestra un error descriptivo si falta estructura HTML.
+- Se agrega una prueba de regresión para evitar que vuelva a aparecer el TypeError relacionado con textContent.
+
+INSTALACIÓN
+1. Detené Vite con Ctrl+C.
+2. Hacé una copia de seguridad de tu carpeta del proyecto.
+3. Extraé el contenido de este ZIP directamente en la raíz del proyecto, reemplazando los archivos.
+4. Conservá package.json, package-lock.json, node_modules y .env.
+5. No hace falta modificar Firestore, sus reglas ni las variables de Vercel.
+6. Ejecutá: node tests/pruebas-interfaz-etapa-6-1.mjs
+7. Ejecutá: npm run dev
+
+IMPORTANTE
+Este ZIP contiene el proyecto completo de la Etapa 6 con la corrección aplicada. No mezcles archivos individuales de versiones anteriores.

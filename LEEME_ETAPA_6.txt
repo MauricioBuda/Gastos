@@ -1,0 +1,54 @@
+PROYECTO GASTOS — ETAPA 6: ADMINISTRACIÓN DE CATEGORÍAS Y MEDIOS DE PAGO
+
+QUÉ INCORPORA
+- Botón discreto «Administrar» en el encabezado. Se mantienen las dos secciones principales originales: Cargar gasto y Consultar gastos.
+- Diálogo con pestañas para administrar categorías y medios de pago.
+- Alta, edición y baja lógica de opciones personalizadas.
+- Confirmación visual antes de editar o eliminar.
+- Vista de opciones eliminadas y botón para recuperarlas sin crear duplicados.
+- Los elementos fijos se identifican con la etiqueta «Fija» y no ofrecen lápiz ni X.
+- Los cambios de nombre se reflejan en los movimientos históricos, filtros y gráficos por medio de las referencias estables ya existentes.
+- Los cambios se sincronizan entre Mauri y Ro mediante los observadores de Firestore.
+- Mantiene la referencia al favicon: /favicon.png. Cuando tengas el ícono, guardalo en public/favicon.png.
+
+OPCIONES FIJAS
+- Categoría «Otros».
+- Medios de pago «Efectivo», «Débito» y «Otros».
+- El resto de las categorías, incluida «Tarjeta de crédito», se puede editar y eliminar.
+- Los medios de pago personalizados se pueden editar y eliminar.
+
+INSTALACIÓN
+1. Detené Vite con Ctrl+C.
+2. Hacé una copia de seguridad de la carpeta del proyecto.
+3. Extraé el contenido del ZIP directamente en la raíz del proyecto Vite.
+4. Permití reemplazar los archivos.
+5. Conservá package.json, package-lock.json, node_modules y .env.
+6. No hace falta npm install: no se agregan dependencias.
+7. No hace falta cambiar ni publicar reglas nuevas de Firestore.
+
+PRUEBAS AUTOMÁTICAS
+Desde la raíz del proyecto ejecutá, uno por uno:
+node tests/pruebas-logica.mjs
+node tests/pruebas-etapa-4.mjs
+node tests/pruebas-interfaz-etapa-4-1.mjs
+node tests/pruebas-etapa-5.mjs
+node tests/pruebas-interfaz-etapa-5.mjs
+node tests/pruebas-interfaz-etapa-6.mjs
+
+Luego iniciá la aplicación:
+npm run dev
+
+PRUEBAS MANUALES
+1. Abrí «Administrar» y recorré ambas pestañas.
+2. Verificá los elementos fijos.
+3. Creá una categoría y un medio personalizados.
+4. Repetí la creación con mayúsculas, espacios externos o diferencias de tilde: no debe generarse otro registro.
+5. Editá una opción utilizada en un gasto y comprobá que el nombre histórico cambie.
+6. Eliminá una opción utilizada y verificá que no desaparezca de gastos anteriores.
+7. Restaurala desde «Opciones eliminadas».
+8. Repetí con un medio de pago.
+9. Comprobá que el selector de carga, filtros y gráficos reflejen los cambios.
+10. Probá también con la cuenta de Ro y en un celular.
+
+ALCANCE DE LAS PRUEBAS
+Las pruebas automáticas comprueban la lógica existente, la estructura HTML, los vínculos de interfaz y los estilos. La lectura/escritura real en Firestore debe validarse desde tu navegador con las dos cuentas autorizadas.

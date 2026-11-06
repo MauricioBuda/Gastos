@@ -474,6 +474,69 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .detalle-sueldos { transition: none; }
 }
 
+
+
+/* ============================================================
+   ADMINISTRACIÓN DE CATEGORÍAS Y MEDIOS - VISTA WEB
+   ============================================================ */
+.boton-administrar-catalogos {
+  min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 7px 11px; border: 1px solid var(--color-borde); border-radius: 10px;
+  background: rgba(255, 253, 249, 0.72); color: var(--color-tierra-oscura);
+  font-size: 0.82rem; font-weight: 640; transition: background 150ms ease, border-color 150ms ease;
+}
+.boton-administrar-catalogos:hover { border-color: #cbb69e; background: #f7f0e7; }
+.boton-administrar-catalogos__icono { font-size: 1.05rem; line-height: 1; }
+.dialogo-administracion-catalogos {
+  width: min(94vw, 720px); max-width: 720px; max-height: min(88vh, 820px);
+  margin: auto; padding: 0; overflow: auto; overscroll-behavior: contain;
+  border: 1px solid var(--color-borde); border-radius: 22px;
+  background: var(--color-superficie); color: var(--color-texto);
+  box-shadow: 0 28px 90px rgba(38, 29, 20, 0.3);
+}
+.dialogo-administracion-catalogos::backdrop { background: rgba(40, 31, 23, 0.48); backdrop-filter: blur(7px); }
+.dialogo-administracion-catalogos[open] { animation: entrada-dialogo 180ms ease-out both; }
+.contenido-dialogo-administracion { display: grid; gap: 19px; padding: 28px; }
+.encabezado-administracion-catalogos { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.encabezado-administracion-catalogos .etiqueta-superior { margin-bottom: 7px; }
+.encabezado-administracion-catalogos h2 { margin: 0; color: var(--color-tierra-oscura); font-size: 1.45rem; letter-spacing: -0.04em; }
+.encabezado-administracion-catalogos p { margin: 7px 0 0; color: var(--color-texto-suave); font-size: 0.86rem; line-height: 1.5; }
+.boton-cerrar-dialogo { width: 38px; height: 38px; flex: 0 0 auto; border: 1px solid var(--color-borde); border-radius: 11px; background: #fffaf3; color: var(--color-texto-suave); font-size: 1.45rem; line-height: 1; }
+.boton-cerrar-dialogo:hover { background: #f4ece1; color: var(--color-tierra-oscura); }
+.pestanas-administracion-catalogos { display: flex; gap: 6px; padding: 5px; border: 1px solid var(--color-borde); border-radius: 12px; background: #f8f3eb; }
+.pestana-catalogo { flex: 1; min-height: 42px; padding: 8px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--color-texto-suave); font-size: 0.86rem; font-weight: 650; }
+.pestana-catalogo--activa { background: var(--color-tierra); color: #fffdf9; box-shadow: 0 3px 9px rgba(98, 72, 47, 0.14); }
+.panel-administracion-catalogo[hidden] { display: none !important; }
+.formulario-nueva-opcion-catalogo { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; padding: 16px; border: 1px solid var(--color-borde); border-radius: 14px; background: #fbf8f2; }
+.formulario-nueva-opcion-catalogo .campo-formulario { min-width: 0; }
+.formulario-nueva-opcion-catalogo .campo-formulario label { font-size: 0.79rem; }
+.formulario-nueva-opcion-catalogo .campo-formulario input { min-height: 43px; }
+.formulario-nueva-opcion-catalogo .boton-principal { min-height: 43px; white-space: nowrap; }
+.encabezado-lista-catalogo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 19px 1px 9px; }
+.encabezado-lista-catalogo h3 { margin: 0; color: var(--color-tierra-oscura); font-size: 0.9rem; }
+.encabezado-lista-catalogo > span, .contador-opciones-inactivas { min-width: 25px; height: 25px; display: inline-grid; place-items: center; padding: 0 7px; border-radius: 999px; background: #f2eadf; color: var(--color-tierra); font-size: 0.73rem; font-weight: 700; }
+.lista-administracion-catalogos { display: grid; gap: 7px; }
+.fila-administracion-catalogo { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 11px; border: 1px solid #eee5d9; border-radius: 11px; background: #fffefa; }
+.fila-administracion-catalogo__contenido { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fila-administracion-catalogo__nombre { color: var(--color-texto); font-size: 0.86rem; font-weight: 650; overflow-wrap: anywhere; }
+.etiqueta-catalogo { display: inline-flex; align-items: center; min-height: 22px; padding: 3px 8px; border: 1px solid #e8ddce; border-radius: 999px; background: #f7f1e8; color: var(--color-texto-suave); font-size: 0.68rem; font-weight: 650; }
+.etiqueta-catalogo--inactiva { border-color: #e8d5ce; background: #fbf0ec; color: #98675a; }
+.acciones-fila-catalogo { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
+.acciones-fila-catalogo .boton-icono { width: 36px; height: 35px; }
+.boton-restaurar-catalogo { min-height: 35px; padding: 6px 11px; font-size: 0.76rem; }
+.fila-administracion-catalogo--inactiva { background: #fcfaf7; }
+.formulario-edicion-catalogo { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 9px; }
+.formulario-edicion-catalogo input { width: 100%; min-width: 0; min-height: 41px; padding: 8px 11px; border: 1px solid #d9c8b3; border-radius: 9px; background: #fffefa; color: var(--color-texto); font: inherit; font-size: 0.86rem; }
+.acciones-edicion-catalogo { display: flex; gap: 6px; }
+.boton-principal--compacto, .boton-secundario--compacto { min-height: 37px; padding: 7px 11px; font-size: 0.77rem; }
+.panel-opciones-inactivas { margin-top: 17px; padding: 12px 13px; border: 1px solid var(--color-borde); border-radius: 12px; background: #faf7f1; }
+.panel-opciones-inactivas summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-texto-suave); font-size: 0.82rem; font-weight: 650; cursor: pointer; list-style: none; }
+.panel-opciones-inactivas summary::-webkit-details-marker { display: none; }
+.panel-opciones-inactivas summary::after { content: "＋"; margin-left: auto; color: var(--color-tierra); font-size: 1rem; }
+.panel-opciones-inactivas[open] summary::after { content: "−"; }
+.panel-opciones-inactivas .lista-administracion-catalogos { margin-top: 12px; }
+.ayuda-administracion-catalogos { margin: 0; padding: 12px 14px; border: 1px solid #e9e1d5; border-radius: 11px; background: #faf7f1; color: var(--color-texto-suave); font-size: 0.76rem; line-height: 1.55; }
+
 /* ============================================================
    VISTA CELULAR
    ============================================================ */
@@ -587,4 +650,29 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .serie-grafico__valor { font-size: 0.68rem; }
   .serie-grafico__pista { height: 10px; }
   .fila-grafico__etiqueta, .fila-grafico__importe { font-size: 0.78rem; }
+
+  /* Administración de categorías y medios de pago en celular */
+  .boton-administrar-catalogos { width: 38px; min-height: 36px; padding: 6px; gap: 0; }
+  .boton-administrar-catalogos__texto { display: none; }
+  .boton-administrar-catalogos__icono { font-size: 1rem; }
+  .encabezado__usuario { gap: 5px; }
+  .dialogo-administracion-catalogos { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); border-radius: 17px; }
+  .contenido-dialogo-administracion { gap: 14px; padding: 19px 14px; }
+  .encabezado-administracion-catalogos h2 { max-width: 260px; font-size: 1.18rem; }
+  .encabezado-administracion-catalogos p { max-width: 260px; font-size: 0.77rem; }
+  .boton-cerrar-dialogo { width: 36px; height: 36px; }
+  .pestana-catalogo { min-height: 41px; padding: 7px 6px; font-size: 0.79rem; }
+  .formulario-nueva-opcion-catalogo { grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 12px; }
+  .formulario-nueva-opcion-catalogo .campo-formulario input { min-height: 46px; font-size: 16px; }
+  .formulario-nueva-opcion-catalogo .boton-principal { width: 100%; }
+  .fila-administracion-catalogo { gap: 8px; padding: 9px 8px; }
+  .fila-administracion-catalogo__nombre { font-size: 0.8rem; }
+  .acciones-fila-catalogo { gap: 5px; }
+  .acciones-fila-catalogo .boton-icono { width: 36px; height: 36px; }
+  .boton-restaurar-catalogo { min-height: 36px; padding: 6px 8px; font-size: 0.72rem; }
+  .formulario-edicion-catalogo { grid-template-columns: minmax(0, 1fr); }
+  .formulario-edicion-catalogo input { min-height: 46px; font-size: 16px; }
+  .acciones-edicion-catalogo { display: grid; grid-template-columns: 1fr 1fr; }
+  .acciones-edicion-catalogo button { width: 100%; }
+  .ayuda-administracion-catalogos { font-size: 0.72rem; }
 }

@@ -11,6 +11,10 @@ import {
   observarMediosPago,
   crearOReactivarCategoria,
   crearOReactivarMedioPago,
+  editarCategoria,
+  eliminarCategoria,
+  editarMedioPago,
+  eliminarMedioPago,
   obtenerCategorias,
   obtenerMediosPago,
 } from './servicios/catalogos.js';
@@ -64,6 +68,27 @@ const elementos = {
   botonAceptarConfirmacion: document.querySelector('#boton-aceptar-confirmacion'),
   botonIniciarSesion: document.querySelector('#boton-iniciar-sesion'),
   botonCerrarSesion: document.querySelector('#boton-cerrar-sesion'),
+  botonAdministrarCatalogos: document.querySelector('#boton-administrar-catalogos'),
+  dialogoAdministracionCatalogos: document.querySelector('#dialogo-administracion-catalogos'),
+  botonCerrarAdministracion: document.querySelector('#boton-cerrar-administracion'),
+  botonAdminCategorias: document.querySelector('#boton-admin-categorias'),
+  botonAdminMedios: document.querySelector('#boton-admin-medios'),
+  panelAdminCategorias: document.querySelector('#panel-admin-categorias'),
+  panelAdminMedios: document.querySelector('#panel-admin-medios'),
+  formularioNuevaCategoria: document.querySelector('#formulario-nueva-categoria'),
+  nombreNuevaCategoria: document.querySelector('#nombre-nueva-categoria'),
+  botonGuardarNuevaCategoria: document.querySelector('#boton-guardar-nueva-categoria'),
+  listaCategoriasActivas: document.querySelector('#lista-categorias-activas'),
+  listaCategoriasInactivas: document.querySelector('#lista-categorias-inactivas'),
+  cantidadCategoriasActivas: document.querySelector('#cantidad-categorias-activas'),
+  cantidadCategoriasInactivas: document.querySelector('#cantidad-categorias-inactivas'),
+  formularioNuevoMedio: document.querySelector('#formulario-nuevo-medio'),
+  nombreNuevoMedio: document.querySelector('#nombre-nuevo-medio'),
+  botonGuardarNuevoMedio: document.querySelector('#boton-guardar-nuevo-medio'),
+  listaMediosActivos: document.querySelector('#lista-medios-activos'),
+  listaMediosInactivos: document.querySelector('#lista-medios-inactivos'),
+  cantidadMediosActivos: document.querySelector('#cantidad-medios-activos'),
+  cantidadMediosInactivos: document.querySelector('#cantidad-medios-inactivos'),
   encabezadoUsuario: document.querySelector('#encabezado-usuario'),
   correoEncabezado: document.querySelector('#correo-encabezado'),
   leyendaEncabezado: document.querySelector('#leyenda-encabezado'),
@@ -185,6 +210,8 @@ let gastoRangoGraficoCargado = false;
 let periodosMesGraficoCargados = new Set();
 let periodosIngresosGraficoCargados = new Set();
 let versionSuscripcionGrafico = 0;
+let vistaCatalogoAdministracion = 'categorias';
+let catalogoEnEdicion = null;
 
 function crearMesVacio(periodo) {
   return {
@@ -357,6 +384,7 @@ function mostrarPantallaAcceso() {
   elementos.panelInicioSesion.hidden = true;
   elementos.panelConfiguracion.hidden = true;
   elementos.panelAplicacion.hidden = true;
+  if (elementos.dialogoAdministracionCatalogos.open) elementos.dialogoAdministracionCatalogos.close();
   elementos.encabezadoUsuario.hidden = true;
   elementos.leyendaEncabezado.hidden = false;
   elementos.piePagina.hidden = false;
@@ -511,6 +539,7 @@ function iniciarObservadoresCatalogos() {
     actualizarOpcionesFiltros();
     renderizarGastos();
     if (tipoGraficoActivo && tipoGraficoActivo !== 'mensual') renderizarGraficoActivo();
+    if (elementos.dialogoAdministracionCatalogos.open) renderizarAdministracionCatalogos();
   }, (error) => {
     console.error('Error al consultar categorías:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
@@ -522,10 +551,318 @@ function iniciarObservadoresCatalogos() {
     actualizarOpcionesFiltros();
     renderizarGastos();
     if (tipoGraficoActivo && tipoGraficoActivo !== 'mensual') renderizarGraficoActivo();
+    if (elementos.dialogoAdministracionCatalogos.open) renderizarAdministracionCatalogos();
   }, (error) => {
     console.error('Error al consultar medios de pago:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
   }, { incluirInactivos: true });
+}
+
+async function abrirAdministracionCatalogos() {
+  if (elementos.dialogoAdministracionCatalogos.open) return;
+  const finalizarCarga = activarCargaBoton(elementos.botonAdministrarCatalogos, 'Cargando…');
+  mostrarEstadoOperacion('Consultando categorías y medios de pago…', 'cargando');
+  try {
+    const [categoriasActualizadas, mediosActualizados] = await Promise.all([
+      obtenerCategorias({ incluirInactivas: true }),
+      obtenerMediosPago({ incluirInactivos: true }),
+    ]);
+    categorias = categoriasActualizadas;
+    mediosPago = mediosActualizados;
+    actualizarSelectorCategorias();
+    actualizarSelectorMedios();
+    actualizarOpcionesFiltros();
+    catalogoEnEdicion = null;
+    cambiarVistaAdministracionCatalogos('categorias');
+    renderizarAdministracionCatalogos();
+    elementos.dialogoAdministracionCatalogos.showModal();
+    mostrarEstadoOperacion('');
+    requestAnimationFrame(() => elementos.botonAdminCategorias.focus());
+  } catch (error) {
+    console.error('No se pudieron consultar los catálogos para administrarlos:', error);
+    mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
+  } finally {
+    finalizarCarga();
+  }
+}
+
+function cambiarVistaAdministracionCatalogos(vista) {
+  vistaCatalogoAdministracion = vista === 'medios' ? 'medios' : 'categorias';
+  const verCategorias = vistaCatalogoAdministracion === 'categorias';
+  elementos.panelAdminCategorias.hidden = !verCategorias;
+  elementos.panelAdminMedios.hidden = verCategorias;
+  elementos.botonAdminCategorias.classList.toggle('pestana-catalogo--activa', verCategorias);
+  elementos.botonAdminMedios.classList.toggle('pestana-catalogo--activa', !verCategorias);
+  elementos.botonAdminCategorias.setAttribute('aria-pressed', String(verCategorias));
+  elementos.botonAdminMedios.setAttribute('aria-pressed', String(!verCategorias));
+}
+
+function renderizarAdministracionCatalogos() {
+  if (!elementos.listaCategoriasActivas) return;
+  renderizarListaAdministracionCatalogo('categoria', categorias);
+  renderizarListaAdministracionCatalogo('medio', mediosPago);
+}
+
+function renderizarListaAdministracionCatalogo(tipo, catalogo) {
+  const esCategoria = tipo === 'categoria';
+  const idContenedorActivos = esCategoria ? 'lista-categorias-activas' : 'lista-medios-activos';
+  const idContenedorInactivos = esCategoria ? 'lista-categorias-inactivas' : 'lista-medios-inactivos';
+  const idContadorActivos = esCategoria ? 'cantidad-categorias-activas' : 'cantidad-medios-activos';
+  const idContadorInactivos = esCategoria ? 'cantidad-categorias-inactivas' : 'cantidad-medios-inactivos';
+
+  // Buscar directamente los elementos del DOM evita depender de referencias
+  // cacheadas que pueden quedar desfasadas si se mezclaron archivos de versiones.
+  const contenedorActivos = document.getElementById(idContenedorActivos);
+  const contenedorInactivos = document.getElementById(idContenedorInactivos);
+  const contadorActivos = document.getElementById(idContadorActivos);
+  const contadorInactivos = document.getElementById(idContadorInactivos);
+
+  if (!contenedorActivos || !contenedorInactivos) {
+    throw new Error(`Falta la estructura HTML para administrar ${esCategoria ? 'categorías' : 'medios de pago'}. Revisá que index.html corresponda a esta versión.`);
+  }
+
+  const activos = catalogo.filter((item) => item.activo);
+  const inactivos = catalogo.filter((item) => !item.activo);
+
+  // Los contadores son informativos; su ausencia no debe bloquear el diálogo.
+  if (contadorActivos) contadorActivos.textContent = String(activos.length);
+  if (contadorInactivos) contadorInactivos.textContent = String(inactivos.length);
+  contenedorActivos.replaceChildren();
+  contenedorInactivos.replaceChildren();
+
+  if (activos.length) {
+    activos.forEach((item) => contenedorActivos.append(crearFilaAdministracionCatalogo(item, tipo, false)));
+  } else {
+    contenedorActivos.append(crearMensajeVacio('No hay opciones activas.'));
+  }
+
+  if (inactivos.length) {
+    inactivos.forEach((item) => contenedorInactivos.append(crearFilaAdministracionCatalogo(item, tipo, true)));
+  } else {
+    contenedorInactivos.append(crearMensajeVacio('No hay opciones eliminadas.'));
+  }
+}
+
+function crearFilaAdministracionCatalogo(item, tipo, estaInactivo) {
+  const fila = document.createElement('article');
+  fila.className = 'fila-administracion-catalogo';
+  fila.dataset.tipoCatalogo = tipo;
+  fila.dataset.idCatalogo = item.id;
+
+  if (!estaInactivo && catalogoEnEdicion?.tipo === tipo && catalogoEnEdicion.id === item.id) {
+    const formulario = document.createElement('form');
+    formulario.className = 'formulario-edicion-catalogo';
+    formulario.dataset.formularioEditarCatalogo = tipo;
+    const campo = document.createElement('input');
+    campo.type = 'text';
+    campo.value = item.nombre;
+    campo.maxLength = 60;
+    campo.required = true;
+    campo.autocomplete = 'off';
+    campo.setAttribute('aria-label', `Nuevo nombre para ${item.nombre}`);
+    campo.dataset.campoEdicionCatalogo = '';
+    const acciones = document.createElement('div');
+    acciones.className = 'acciones-edicion-catalogo';
+    const guardar = document.createElement('button');
+    guardar.type = 'submit';
+    guardar.className = 'boton-principal boton-principal--compacto';
+    guardar.textContent = 'Guardar';
+    const cancelar = document.createElement('button');
+    cancelar.type = 'button';
+    cancelar.className = 'boton-secundario boton-secundario--compacto';
+    cancelar.textContent = 'Cancelar';
+    cancelar.addEventListener('click', () => {
+      catalogoEnEdicion = null;
+      renderizarAdministracionCatalogos();
+    });
+    acciones.append(guardar, cancelar);
+    formulario.append(campo, acciones);
+    formulario.addEventListener('submit', (evento) => guardarEdicionCatalogo(evento, item, tipo, guardar));
+    fila.append(formulario);
+    requestAnimationFrame(() => campo.focus());
+    return fila;
+  }
+
+  const contenido = document.createElement('div');
+  contenido.className = 'fila-administracion-catalogo__contenido';
+  const nombre = document.createElement('strong');
+  nombre.className = 'fila-administracion-catalogo__nombre';
+  nombre.textContent = item.nombre;
+  contenido.append(nombre);
+
+  if (estaInactivo) {
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 'etiqueta-catalogo etiqueta-catalogo--inactiva';
+    etiqueta.textContent = 'Eliminada';
+    contenido.append(etiqueta);
+  } else if (item.protegida) {
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 'etiqueta-catalogo';
+    etiqueta.textContent = 'Fija';
+    contenido.append(etiqueta);
+  }
+
+  const acciones = document.createElement('div');
+  acciones.className = 'acciones-fila-catalogo';
+
+  if (estaInactivo) {
+    const restaurar = document.createElement('button');
+    restaurar.type = 'button';
+    restaurar.className = 'boton-secundario boton-restaurar-catalogo';
+    restaurar.textContent = 'Restaurar';
+    restaurar.addEventListener('click', () => restaurarOpcionCatalogo(item, tipo, restaurar));
+    acciones.append(restaurar);
+  } else if (!item.protegida) {
+    const editar = document.createElement('button');
+    editar.type = 'button';
+    editar.className = 'boton-icono boton-icono--editar';
+    editar.textContent = '✎';
+    editar.title = `Editar ${item.nombre}`;
+    editar.setAttribute('aria-label', `Editar ${item.nombre}`);
+    editar.addEventListener('click', () => {
+      catalogoEnEdicion = { tipo, id: item.id };
+      renderizarAdministracionCatalogos();
+      const filaActual = (tipo === 'categoria' ? elementos.listaCategoriasActivas : elementos.listaMediosActivos)
+        .querySelector(`[data-id-catalogo="${item.id}"] [data-campo-edicion-catalogo]`);
+      filaActual?.focus();
+    });
+
+    const eliminar = document.createElement('button');
+    eliminar.type = 'button';
+    eliminar.className = 'boton-icono boton-icono--eliminar';
+    eliminar.textContent = '×';
+    eliminar.title = `Eliminar ${item.nombre}`;
+    eliminar.setAttribute('aria-label', `Eliminar ${item.nombre}`);
+    eliminar.addEventListener('click', () => eliminarOpcionCatalogo(item, tipo, eliminar));
+    acciones.append(editar, eliminar);
+  }
+
+  fila.append(contenido, acciones);
+  if (estaInactivo) fila.classList.add('fila-administracion-catalogo--inactiva');
+  if (item.protegida) fila.classList.add('fila-administracion-catalogo--protegida');
+  return fila;
+}
+
+async function guardarNuevaOpcionCatalogo(evento, tipo) {
+  evento.preventDefault();
+  const esCategoria = tipo === 'categoria';
+  const formulario = esCategoria ? elementos.formularioNuevaCategoria : elementos.formularioNuevoMedio;
+  const campo = esCategoria ? elementos.nombreNuevaCategoria : elementos.nombreNuevoMedio;
+  const boton = esCategoria ? elementos.botonGuardarNuevaCategoria : elementos.botonGuardarNuevoMedio;
+  if (!formulario.reportValidity()) return;
+
+  const nombre = campo.value.trim();
+  const finalizarCarga = activarCargaBoton(boton, 'Guardando…');
+  mostrarEstadoOperacion(esCategoria ? 'Guardando categoría…' : 'Guardando medio de pago…', 'cargando');
+  try {
+    const resultado = esCategoria
+      ? await crearOReactivarCategoria(nombre)
+      : await crearOReactivarMedioPago(nombre);
+    formulario.reset();
+    catalogoEnEdicion = null;
+    mostrarEstadoOperacion(resultado.reactivada
+      ? `${resultado.nombre} se recuperó y ya está disponible.`
+      : `${resultado.nombre} se agregó correctamente.`, 'correcto');
+    renderizarAdministracionCatalogos();
+  } catch (error) {
+    console.error('No se pudo agregar la opción del catálogo:', error);
+    mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
+  } finally {
+    finalizarCarga();
+  }
+}
+
+async function guardarEdicionCatalogo(evento, item, tipo, boton) {
+  evento.preventDefault();
+  const formulario = evento.currentTarget;
+  if (!formulario.reportValidity()) return;
+  const campo = formulario.querySelector('[data-campo-edicion-catalogo]');
+  const nombreNuevo = campo.value.trim();
+  if (!nombreNuevo) {
+    mostrarEstadoOperacion('El nombre no puede quedar vacío.', 'error');
+    campo.focus();
+    return;
+  }
+  if (nombreNuevo === item.nombre) {
+    catalogoEnEdicion = null;
+    renderizarAdministracionCatalogos();
+    mostrarEstadoOperacion('No hay cambios para guardar.', 'aviso');
+    return;
+  }
+
+  const etiqueta = tipo === 'categoria' ? 'categoría' : 'medio de pago';
+  const confirmado = await solicitarConfirmacion({
+    titulo: `Editar ${etiqueta}`,
+    mensaje: `¿Querés cambiar “${item.nombre}” por “${nombreNuevo}”? El nuevo nombre también se mostrará en los movimientos anteriores.`,
+    textoConfirmar: 'Guardar cambios',
+  });
+  if (!confirmado) return;
+
+  catalogoEnEdicion = null;
+  const finalizarCarga = activarCargaBoton(boton, 'Guardando…');
+  mostrarEstadoOperacion(`Actualizando ${etiqueta}…`, 'cargando');
+  try {
+    if (tipo === 'categoria') await editarCategoria(item.id, nombreNuevo);
+    else await editarMedioPago(item.id, nombreNuevo);
+    mostrarEstadoOperacion(`Se actualizó “${nombreNuevo}”. Los movimientos anteriores ya muestran el nuevo nombre.`, 'correcto');
+    renderizarAdministracionCatalogos();
+  } catch (error) {
+    console.error('No se pudo editar la opción del catálogo:', error);
+    mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
+    renderizarAdministracionCatalogos();
+  } finally {
+    finalizarCarga();
+  }
+}
+
+async function eliminarOpcionCatalogo(item, tipo, boton) {
+  const etiqueta = tipo === 'categoria' ? 'categoría' : 'medio de pago';
+  const confirmado = await solicitarConfirmacion({
+    titulo: `Eliminar ${etiqueta}`,
+    mensaje: `¿Querés quitar “${item.nombre}” de las opciones disponibles? Los movimientos anteriores conservarán esta opción y podrás recuperarla más adelante.`,
+    textoConfirmar: 'Eliminar opción',
+    destructiva: true,
+  });
+  if (!confirmado) return;
+
+  const finalizarCarga = activarCargaBoton(boton, 'Eliminando…');
+  mostrarEstadoOperacion(`Eliminando ${etiqueta}…`, 'cargando');
+  try {
+    if (tipo === 'categoria') await eliminarCategoria(item.id);
+    else await eliminarMedioPago(item.id);
+    mostrarEstadoOperacion(`“${item.nombre}” se quitó de las opciones nuevas. El historial se conservó.`, 'correcto');
+    renderizarAdministracionCatalogos();
+  } catch (error) {
+    console.error('No se pudo eliminar la opción del catálogo:', error);
+    mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
+  } finally {
+    finalizarCarga();
+  }
+}
+
+async function restaurarOpcionCatalogo(item, tipo, boton) {
+  const etiqueta = tipo === 'categoria' ? 'categoría' : 'medio de pago';
+  const confirmado = await solicitarConfirmacion({
+    titulo: `Recuperar ${etiqueta}`,
+    mensaje: `¿Querés volver a habilitar “${item.nombre}”? Se recuperará la opción anterior, sin crear un duplicado.`,
+    textoConfirmar: 'Recuperar opción',
+  });
+  if (!confirmado) return;
+
+  const finalizarCarga = activarCargaBoton(boton, 'Recuperando…');
+  mostrarEstadoOperacion(`Recuperando ${etiqueta}…`, 'cargando');
+  try {
+    const resultado = tipo === 'categoria'
+      ? await crearOReactivarCategoria(item.nombre)
+      : await crearOReactivarMedioPago(item.nombre);
+    mostrarEstadoOperacion(`“${resultado.nombre}” volvió a estar disponible.`, 'correcto');
+    renderizarAdministracionCatalogos();
+  } catch (error) {
+    console.error('No se pudo recuperar la opción del catálogo:', error);
+    mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
+  } finally {
+    finalizarCarga();
+  }
 }
 
 function actualizarSelectorCategorias(idSeleccionado = elementos.categoriaGasto.value) {
@@ -1618,6 +1955,16 @@ elementos.botonCerrarSesion?.addEventListener('click', async () => {
     finalizarCarga();
   }
 });
+
+elementos.botonAdministrarCatalogos.addEventListener('click', abrirAdministracionCatalogos);
+elementos.botonCerrarAdministracion.addEventListener('click', () => elementos.dialogoAdministracionCatalogos.close());
+elementos.dialogoAdministracionCatalogos.addEventListener('click', (evento) => {
+  if (evento.target === elementos.dialogoAdministracionCatalogos) elementos.dialogoAdministracionCatalogos.close();
+});
+elementos.botonAdminCategorias.addEventListener('click', () => cambiarVistaAdministracionCatalogos('categorias'));
+elementos.botonAdminMedios.addEventListener('click', () => cambiarVistaAdministracionCatalogos('medios'));
+elementos.formularioNuevaCategoria.addEventListener('submit', (evento) => guardarNuevaOpcionCatalogo(evento, 'categoria'));
+elementos.formularioNuevoMedio.addEventListener('submit', (evento) => guardarNuevaOpcionCatalogo(evento, 'medio'));
 
 elementos.botonVistaCarga.addEventListener('click', () => mostrarVista('carga'));
 elementos.botonVistaConsulta.addEventListener('click', () => mostrarVista('consulta'));

@@ -24,6 +24,10 @@
           <span class="marca-aplicacion__texto">Gastos</span>
         </a>
         <div class="encabezado__usuario" id="encabezado-usuario" hidden>
+          <button class="boton-administrar-catalogos" id="boton-administrar-catalogos" type="button" aria-label="Administrar categorías y medios de pago" aria-haspopup="dialog" aria-controls="dialogo-administracion-catalogos">
+            <span class="boton-administrar-catalogos__icono" aria-hidden="true">⚙</span>
+            <span class="boton-administrar-catalogos__texto">Administrar</span>
+          </button>
           <span class="encabezado__correo" id="correo-encabezado"></span>
           <button class="boton-texto" id="boton-cerrar-sesion" type="button">Cerrar sesión</button>
         </div>
@@ -377,6 +381,71 @@
           <span>Uso privado</span>
         </footer>
       </main>
+
+
+      <dialog class="dialogo-administracion-catalogos" id="dialogo-administracion-catalogos" aria-labelledby="titulo-administracion-catalogos">
+        <div class="contenido-dialogo-administracion">
+          <header class="encabezado-administracion-catalogos">
+            <div>
+              <span class="etiqueta-superior">CONFIGURACIÓN</span>
+              <h2 id="titulo-administracion-catalogos">Categorías y medios de pago</h2>
+              <p>Administrá las opciones que aparecen al cargar un gasto.</p>
+            </div>
+            <button class="boton-cerrar-dialogo" id="boton-cerrar-administracion" type="button" aria-label="Cerrar administración">×</button>
+          </header>
+
+          <nav class="pestanas-administracion-catalogos" aria-label="Tipo de opciones">
+            <button class="pestana-catalogo pestana-catalogo--activa" id="boton-admin-categorias" type="button" data-vista-catalogo="categorias" aria-pressed="true">Categorías</button>
+            <button class="pestana-catalogo" id="boton-admin-medios" type="button" data-vista-catalogo="medios" aria-pressed="false">Medios de pago</button>
+          </nav>
+
+          <section class="panel-administracion-catalogo" id="panel-admin-categorias" aria-labelledby="boton-admin-categorias">
+            <form class="formulario-nueva-opcion-catalogo" id="formulario-nueva-categoria" novalidate>
+              <div class="campo-formulario campo-formulario--compacto">
+                <label for="nombre-nueva-categoria">Agregar categoría</label>
+                <input id="nombre-nueva-categoria" type="text" maxlength="60" placeholder="Ej.: Veterinaria" autocomplete="off" required />
+              </div>
+              <button class="boton-principal" id="boton-guardar-nueva-categoria" type="submit">Agregar</button>
+            </form>
+            <div class="encabezado-lista-catalogo">
+              <h3>Opciones disponibles</h3>
+              <span id="cantidad-categorias-activas">0</span>
+            </div>
+            <div class="lista-administracion-catalogos" id="lista-categorias-activas" aria-live="polite"></div>
+            <details class="panel-opciones-inactivas" id="panel-categorias-inactivas">
+              <summary>
+                <span>Opciones eliminadas</span>
+                <span class="contador-opciones-inactivas" id="cantidad-categorias-inactivas">0</span>
+              </summary>
+              <div class="lista-administracion-catalogos lista-administracion-catalogos--inactivas" id="lista-categorias-inactivas"></div>
+            </details>
+          </section>
+
+          <section class="panel-administracion-catalogo" id="panel-admin-medios" aria-labelledby="boton-admin-medios" hidden>
+            <form class="formulario-nueva-opcion-catalogo" id="formulario-nuevo-medio" novalidate>
+              <div class="campo-formulario campo-formulario--compacto">
+                <label for="nombre-nuevo-medio">Agregar medio de pago</label>
+                <input id="nombre-nuevo-medio" type="text" maxlength="60" placeholder="Ej.: Mercado Pago" autocomplete="off" required />
+              </div>
+              <button class="boton-principal" id="boton-guardar-nuevo-medio" type="submit">Agregar</button>
+            </form>
+            <div class="encabezado-lista-catalogo">
+              <h3>Opciones disponibles</h3>
+              <span id="cantidad-medios-activos">0</span>
+            </div>
+            <div class="lista-administracion-catalogos" id="lista-medios-activos" aria-live="polite"></div>
+            <details class="panel-opciones-inactivas" id="panel-medios-inactivos">
+              <summary>
+                <span>Opciones eliminadas</span>
+                <span class="contador-opciones-inactivas" id="cantidad-medios-inactivos">0</span>
+              </summary>
+              <div class="lista-administracion-catalogos lista-administracion-catalogos--inactivas" id="lista-medios-inactivos"></div>
+            </details>
+          </section>
+
+          <p class="ayuda-administracion-catalogos">Las opciones fijas no se pueden modificar. Al renombrar una opción, el nuevo nombre también se verá en los movimientos anteriores. Las opciones eliminadas conservan su historial y se pueden recuperar.</p>
+        </div>
+      </dialog>
 
       <dialog class="dialogo-edicion-ingreso" id="dialogo-edicion-ingreso" aria-labelledby="titulo-dialogo-ingreso">
         <form id="formulario-editar-ingreso" class="formulario-dialogo" novalidate>

@@ -1,14 +1,12 @@
-PROYECTO GASTOS — VERSIÓN BASE DE ETAPA 5
+PROYECTO GASTOS — VERSIÓN BASE DE ETAPA 6
 
-La entrega más reciente incorpora las vistas Movimientos, Dashboard y Gráficos, filtros combinables, seis visualizaciones y selector de 3/6/12 meses.
+Esta entrega agrega la administración visual de categorías y medios de pago sobre la versión 5.1 validada por el usuario.
 
 Leé primero:
-- LEEME_ETAPA_5.txt
-- documentacion/ETAPA_5_PRUEBAS.md
+- LEEME_ETAPA_6.txt
+- documentacion/ETAPA_6_ADMINISTRACION_CATALOGOS.md
 - documentacion/MODELO_DE_DATOS.md
 
-Para instalar, extraé el ZIP en la raíz del proyecto Vite. Conservá package.json, package-lock.json, node_modules y .env. No reemplaces la configuración local.
+Extraé el ZIP en la raíz del proyecto Vite. Conservá package.json, package-lock.json, node_modules y .env. No se agregan dependencias ni reglas nuevas de Firestore.
 
-El favicon está preparado en index.html con la referencia /favicon.png. Cuando tengas tu imagen, guardala en public/favicon.png.
-
-La versión mantiene Firebase Authentication y Cloud Firestore ya configurados. Esta etapa no requiere cambios de reglas ni nuevas variables de entorno.
+El favicon permanece preparado en index.html con la referencia /favicon.png; colocá el archivo definitivo en public/favicon.png.
