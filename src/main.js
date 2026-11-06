@@ -19,6 +19,7 @@ import {
   editarGasto,
   eliminarGasto,
   observarGastosDelMes,
+  observarGastosEnRango,
 } from './servicios/gastos.js';
 import {
   observarMes,
@@ -38,6 +39,14 @@ import {
   obtenerPersonaPorCorreo,
   normalizarNombre,
 } from './servicios/validaciones.js';
+import {
+  filtrarGastos,
+  agruparImportesPor,
+  obtenerPeriodosRecientes,
+  crearResumenesEvolucionMensual,
+  agruparGastosPorSemana,
+  contarFiltrosActivos,
+} from './servicios/analisis.js';
 
 const elementos = {
   pantallaEsperaInicial: document.querySelector('#pantalla-espera-inicial'),
@@ -111,6 +120,31 @@ const elementos = {
   cantidadMovimientos: document.querySelector('#cantidad-movimientos'),
   totalMovimientos: document.querySelector('#total-movimientos'),
   listaMovimientos: document.querySelector('#lista-movimientos'),
+  subvistaMovimientos: document.querySelector('#subvista-movimientos'),
+  subvistaDashboard: document.querySelector('#subvista-dashboard'),
+  subvistaGraficos: document.querySelector('#subvista-graficos'),
+  botonSubvistaMovimientos: document.querySelector('#boton-subvista-movimientos'),
+  botonSubvistaDashboard: document.querySelector('#boton-subvista-dashboard'),
+  botonSubvistaGraficos: document.querySelector('#boton-subvista-graficos'),
+  filtroCategoria: document.querySelector('#filtro-categoria'),
+  filtroPersona: document.querySelector('#filtro-persona'),
+  filtroMedioPago: document.querySelector('#filtro-medio-pago'),
+  filtroMontoMinimo: document.querySelector('#filtro-monto-minimo'),
+  filtroMontoMaximo: document.querySelector('#filtro-monto-maximo'),
+  filtroFechaDesde: document.querySelector('#filtro-fecha-desde'),
+  filtroFechaHasta: document.querySelector('#filtro-fecha-hasta'),
+  filtroOrden: document.querySelector('#filtro-orden'),
+  contadorFiltros: document.querySelector('#contador-filtros'),
+  ayudaFiltros: document.querySelector('#ayuda-filtros'),
+  botonLimpiarFiltros: document.querySelector('#boton-limpiar-filtros'),
+  grupoBotonesGraficos: document.querySelector('#grupo-botones-graficos'),
+  panelGrafico: document.querySelector('#panel-grafico'),
+  tituloGraficoActivo: document.querySelector('#titulo-grafico-activo'),
+  descripcionGraficoActivo: document.querySelector('#descripcion-grafico-activo'),
+  contenidoGrafico: document.querySelector('#contenido-grafico'),
+  controlAlcanceGrafico: document.querySelector('#control-alcance-grafico'),
+  selectorCantidadMeses: document.querySelector('#selector-cantidad-meses'),
+  ayudaGraficos: document.querySelector('#ayuda-graficos'),
   piePagina: document.querySelector('#pie-pagina'),
 };
 
@@ -138,6 +172,19 @@ let periodoSueldosInicializado = null;
 const edicionesSueldos = { mauri: false, ro: false };
 let resolverConfirmacionPendiente = null;
 let temporizadorNotificacion = null;
+let subvistaActiva = 'movimientos';
+let graficosDesplegados = false;
+let tipoGraficoActivo = null;
+let canceladorObservadorGastosGrafico = null;
+let canceladoresObservadoresHistorial = [];
+let periodosGraficoActivo = [];
+let gastosHistoricosGrafico = [];
+let mesesHistoricosGrafico = {};
+let ingresosHistoricosGrafico = {};
+let gastoRangoGraficoCargado = false;
+let periodosMesGraficoCargados = new Set();
+let periodosIngresosGraficoCargados = new Set();
+let versionSuscripcionGrafico = 0;
 
 function crearMesVacio(periodo) {
   return {
@@ -279,6 +326,7 @@ function activarCargaBoton(boton, mensaje) {
 }
 
 function detenerObservadores() {
+  detenerObservadoresGraficoMensual();
   cancelarObservadorCategorias?.();
   cancelarObservadorMedios?.();
   cancelarObservadorGastos?.();
@@ -327,8 +375,15 @@ function mostrarConfiguracionPendiente() {
 }
 
 function mostrarVista(nombre) {
-  vistaActiva = nombre;
   const verCarga = nombre === 'carga';
+  if (verCarga && subvistaActiva === 'graficos') {
+    // No mantener lecturas históricas abiertas cuando se abandona la consulta.
+    detenerObservadoresGraficoMensual();
+    tipoGraficoActivo = null;
+    elementos.panelGrafico.hidden = true;
+    actualizarEstadoBotonesGraficos();
+  }
+  vistaActiva = nombre;
   elementos.vistaCarga.hidden = !verCarga;
   elementos.vistaConsulta.hidden = verCarga;
   elementos.botonVistaCarga.classList.toggle('boton-navegacion--activo', verCarga);
@@ -339,9 +394,70 @@ function mostrarVista(nombre) {
   } else {
     elementos.botonVistaConsulta.setAttribute('aria-current', 'page');
     elementos.botonVistaCarga.removeAttribute('aria-current');
+    mostrarSubvistaConsulta(subvistaActiva, true);
     renderizarGastos();
   }
   mostrarEstadoOperacion('');
+}
+
+function mostrarSubvistaConsulta(nombre, forzar = false) {
+  if (nombre === 'graficos' && subvistaActiva === 'graficos' && !forzar) {
+    graficosDesplegados = !graficosDesplegados;
+    elementos.grupoBotonesGraficos.hidden = !graficosDesplegados;
+    elementos.panelGrafico.hidden = true;
+    elementos.ayudaGraficos.hidden = !graficosDesplegados;
+    tipoGraficoActivo = null;
+    detenerObservadoresGraficoMensual();
+    elementos.controlAlcanceGrafico.hidden = true;
+    actualizarEstadoBotonesGraficos();
+    elementos.botonSubvistaGraficos.setAttribute('aria-expanded', String(graficosDesplegados));
+    return;
+  }
+
+  subvistaActiva = nombre;
+  elementos.subvistaMovimientos.hidden = nombre !== 'movimientos';
+  elementos.subvistaDashboard.hidden = nombre !== 'dashboard';
+  elementos.subvistaGraficos.hidden = nombre !== 'graficos';
+
+  const botones = [
+    [elementos.botonSubvistaMovimientos, 'movimientos'],
+    [elementos.botonSubvistaDashboard, 'dashboard'],
+    [elementos.botonSubvistaGraficos, 'graficos'],
+  ];
+  for (const [boton, identificador] of botones) {
+    const activo = identificador === nombre;
+    boton.classList.toggle('boton-vista-consulta--activo', activo);
+    boton.setAttribute('aria-pressed', String(activo));
+  }
+
+  if (nombre === 'movimientos') {
+    elementos.botonSubvistaGraficos.setAttribute('aria-expanded', 'false');
+    graficosDesplegados = false;
+    elementos.grupoBotonesGraficos.hidden = true;
+    elementos.panelGrafico.hidden = true;
+    elementos.ayudaGraficos.hidden = true;
+    tipoGraficoActivo = null;
+    detenerObservadoresGraficoMensual();
+    renderizarGastos();
+  } else if (nombre === 'dashboard') {
+    elementos.botonSubvistaGraficos.setAttribute('aria-expanded', 'false');
+    graficosDesplegados = false;
+    elementos.grupoBotonesGraficos.hidden = true;
+    elementos.panelGrafico.hidden = true;
+    elementos.ayudaGraficos.hidden = true;
+    tipoGraficoActivo = null;
+    detenerObservadoresGraficoMensual();
+  } else {
+    detenerObservadoresGraficoMensual();
+    graficosDesplegados = true;
+    tipoGraficoActivo = null;
+    elementos.panelGrafico.hidden = true;
+    elementos.controlAlcanceGrafico.hidden = true;
+    elementos.grupoBotonesGraficos.hidden = false;
+    elementos.ayudaGraficos.hidden = false;
+    elementos.botonSubvistaGraficos.setAttribute('aria-expanded', 'true');
+    actualizarEstadoBotonesGraficos();
+  }
 }
 
 function mostrarUsuario(usuario) {
@@ -356,6 +472,8 @@ function mostrarUsuario(usuario) {
   elementos.correoEncabezado.textContent = usuario.email || '';
   elementos.insigniaUsuario.textContent = (usuario.displayName || usuario.email || 'U').trim().charAt(0).toUpperCase();
   elementos.selectorMes.value = periodoSeleccionado;
+  actualizarOpcionesFiltros();
+  mostrarSubvistaConsulta('movimientos', true);
   prepararFormularioNuevo();
   mostrarVista('carga');
 }
@@ -390,7 +508,9 @@ function iniciarObservadoresCatalogos() {
   cancelarObservadorCategorias = observarCategorias((resultado) => {
     categorias = resultado;
     actualizarSelectorCategorias();
+    actualizarOpcionesFiltros();
     renderizarGastos();
+    if (tipoGraficoActivo && tipoGraficoActivo !== 'mensual') renderizarGraficoActivo();
   }, (error) => {
     console.error('Error al consultar categorías:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
@@ -399,7 +519,9 @@ function iniciarObservadoresCatalogos() {
   cancelarObservadorMedios = observarMediosPago((resultado) => {
     mediosPago = resultado;
     actualizarSelectorMedios();
+    actualizarOpcionesFiltros();
     renderizarGastos();
+    if (tipoGraficoActivo && tipoGraficoActivo !== 'mensual') renderizarGraficoActivo();
   }, (error) => {
     console.error('Error al consultar medios de pago:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
@@ -761,6 +883,7 @@ function cambiarPeriodoConsultado(periodo) {
   edicionesSueldos.mauri = false;
   edicionesSueldos.ro = false;
   elementos.selectorMes.value = periodo;
+  if (subvistaActiva === 'graficos' && tipoGraficoActivo === 'mensual' && graficosDesplegados) prepararObservadoresGraficoMensual();
   cancelarObservadorGastos?.();
   cancelarObservadorMes?.();
   cancelarObservadorIngresos?.();
@@ -779,6 +902,7 @@ function cambiarPeriodoConsultado(periodo) {
       renderizarGastos();
       actualizarBalanceMensual();
       actualizarIndicadorCargaMensual();
+      if (tipoGraficoActivo && tipoGraficoActivo !== 'mensual') renderizarGraficoActivo();
     }, (error) => {
       cargandoGastos = false;
       console.error('Error al consultar gastos:', error);
@@ -795,6 +919,7 @@ function cambiarPeriodoConsultado(periodo) {
       renderizarObservacionSaldo();
       actualizarBalanceMensual();
       actualizarIndicadorCargaMensual();
+      if (tipoGraficoActivo === 'ingresos-gastos') renderizarGraficoActivo();
     }, (error) => {
       cargandoMes = false;
       console.error('Error al consultar el mes:', error);
@@ -808,6 +933,7 @@ function cambiarPeriodoConsultado(periodo) {
       renderizarIngresosAdicionales();
       actualizarBalanceMensual();
       actualizarIndicadorCargaMensual();
+      if (tipoGraficoActivo === 'ingresos-gastos') renderizarGraficoActivo();
     }, (error) => {
       cargandoIngresos = false;
       console.error('Error al consultar ingresos adicionales:', error);
@@ -865,6 +991,57 @@ function actualizarBalanceMensual() {
     : 'Los dos sueldos están registrados para este mes.';
 }
 
+function obtenerFiltrosActuales() {
+  return {
+    categoriaId: elementos.filtroCategoria.value,
+    responsable: elementos.filtroPersona.value,
+    medioPagoId: elementos.filtroMedioPago.value,
+    montoMinimo: elementos.filtroMontoMinimo.value,
+    montoMaximo: elementos.filtroMontoMaximo.value,
+    fechaDesde: elementos.filtroFechaDesde.value,
+    fechaHasta: elementos.filtroFechaHasta.value,
+    orden: elementos.filtroOrden.value,
+    nombresCategorias: Object.fromEntries(categorias.map((item) => [item.id, item.nombre])),
+    nombresMediosPago: Object.fromEntries(mediosPago.map((item) => [item.id, item.nombre])),
+  };
+}
+
+function actualizarOpcionesFiltros() {
+  const valorCategoria = elementos.filtroCategoria.value;
+  const valorMedio = elementos.filtroMedioPago.value;
+  const construir = (select, catalogo, etiquetaTodos, seleccionado) => {
+    select.replaceChildren();
+    const opcionTodos = document.createElement('option');
+    opcionTodos.value = '';
+    opcionTodos.textContent = etiquetaTodos;
+    select.append(opcionTodos);
+    catalogo
+      .filter((item) => item.id !== 'otros')
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es-AR'))
+      .forEach((item) => {
+        const opcion = document.createElement('option');
+        opcion.value = item.id;
+        opcion.textContent = item.activo ? item.nombre : `${item.nombre} (inactiva)`;
+        select.append(opcion);
+      });
+    select.value = seleccionado;
+  };
+  construir(elementos.filtroCategoria, categorias, 'Todas', valorCategoria);
+  construir(elementos.filtroMedioPago, mediosPago, 'Todos', valorMedio);
+}
+
+function limpiarFiltros() {
+  elementos.filtroCategoria.value = '';
+  elementos.filtroPersona.value = '';
+  elementos.filtroMedioPago.value = '';
+  elementos.filtroMontoMinimo.value = '';
+  elementos.filtroMontoMaximo.value = '';
+  elementos.filtroFechaDesde.value = '';
+  elementos.filtroFechaHasta.value = '';
+  elementos.filtroOrden.value = 'fecha-desc';
+  renderizarGastos();
+}
+
 function renderizarGastos() {
   if (!elementos.listaMovimientos || elementos.vistaConsulta.hidden) return;
 
@@ -875,19 +1052,270 @@ function renderizarGastos() {
     elementos.totalMovimientos.textContent = '';
     return;
   }
-  const cantidad = gastosMes.length;
-  const total = gastosMes.reduce((suma, gasto) => suma + Number(gasto.monto || 0), 0);
+
+  let gastosFiltrados;
+  try {
+    gastosFiltrados = filtrarGastos(gastosMes, obtenerFiltrosActuales());
+    elementos.ayudaFiltros.textContent = 'Los filtros se pueden combinar. Los gráficos no se modifican.';
+  } catch (error) {
+    elementos.ayudaFiltros.textContent = error.message;
+    elementos.ayudaFiltros.dataset.tipo = 'error';
+    elementos.cantidadMovimientos.textContent = 'Revisá los filtros';
+    elementos.totalMovimientos.textContent = '';
+    elementos.listaMovimientos.append(crearMensajeVacio(error.message));
+    elementos.contadorFiltros.textContent = `${contarFiltrosActivos(obtenerFiltrosActuales())} filtros`;
+    return;
+  }
+
+  delete elementos.ayudaFiltros.dataset.tipo;
+  const cantidad = gastosFiltrados.length;
+  const total = gastosFiltrados.reduce((suma, gasto) => suma + Number(gasto.monto || 0), 0);
+  const filtrosActivos = contarFiltrosActivos(obtenerFiltrosActuales());
+  elementos.contadorFiltros.textContent = filtrosActivos === 1 ? '1 filtro' : `${filtrosActivos} filtros`;
   elementos.cantidadMovimientos.textContent = cantidad === 1 ? '1 movimiento' : `${cantidad} movimientos`;
   elementos.totalMovimientos.textContent = formatearMoneda(total);
 
   if (cantidad === 0) {
-    elementos.listaMovimientos.append(crearMensajeVacio('Todavía no hay gastos registrados en este mes.'));
+    elementos.listaMovimientos.append(crearMensajeVacio(
+      gastosMes.length ? 'Ningún gasto coincide con los filtros seleccionados.' : 'Todavía no hay gastos registrados en este mes.',
+    ));
     return;
   }
 
   const fragmento = document.createDocumentFragment();
-  for (const gasto of gastosMes) fragmento.append(crearTarjetaGasto(gasto));
+  for (const gasto of gastosFiltrados) fragmento.append(crearTarjetaGasto(gasto));
   elementos.listaMovimientos.append(fragmento);
+}
+
+const DEFINICIONES_GRAFICOS = {
+  categorias: { titulo: 'Gastos por categoría', descripcion: 'Distribución de los gastos del mes seleccionado según su categoría.' },
+  personas: { titulo: 'Gastos por persona', descripcion: 'Comparación de los gastos realizados por Mauri y Ro.' },
+  medios: { titulo: 'Gastos por medio de pago', descripcion: 'Distribución de los gastos según el medio utilizado.' },
+  semanal: { titulo: 'Evolución semanal', descripcion: 'Gastos agrupados en semanas de lunes a domingo.' },
+  mensual: { titulo: 'Evolución mensual', descripcion: 'Comparación de ingresos totales, gastos y saldo disponible de los últimos meses.' },
+  'ingresos-gastos': { titulo: 'Ingresos vs. gastos', descripcion: 'Comparación de los ingresos y gastos del mes seleccionado.' },
+};
+
+function actualizarEstadoBotonesGraficos() {
+  document.querySelectorAll('[data-tipo-grafico]').forEach((boton) => {
+    const activo = boton.dataset.tipoGrafico === tipoGraficoActivo;
+    boton.classList.toggle('boton-grafico--activo', activo);
+    boton.setAttribute('aria-pressed', String(activo));
+  });
+}
+
+function detenerObservadoresGraficoMensual() {
+  versionSuscripcionGrafico += 1;
+  canceladorObservadorGastosGrafico?.();
+  canceladorObservadorGastosGrafico = null;
+  canceladoresObservadoresHistorial.forEach((cancelar) => cancelar?.());
+  canceladoresObservadoresHistorial = [];
+  periodosGraficoActivo = [];
+  gastosHistoricosGrafico = [];
+  mesesHistoricosGrafico = {};
+  ingresosHistoricosGrafico = {};
+  gastoRangoGraficoCargado = false;
+  periodosMesGraficoCargados = new Set();
+  periodosIngresosGraficoCargados = new Set();
+}
+
+function prepararObservadoresGraficoMensual() {
+  detenerObservadoresGraficoMensual();
+  const versionActual = versionSuscripcionGrafico;
+  const cantidadMeses = Number(elementos.selectorCantidadMeses.value || 6);
+  periodosGraficoActivo = obtenerPeriodosRecientes(periodoSeleccionado, cantidadMeses);
+  const primerPeriodo = periodosGraficoActivo[0];
+  const [anioFinal, mesFinal] = periodoSeleccionado.split('-').map(Number);
+  const siguienteMes = new Date(anioFinal, mesFinal, 1);
+  const limiteSuperior = `${siguienteMes.getFullYear()}-${String(siguienteMes.getMonth() + 1).padStart(2, '0')}-01`;
+
+  elementos.contenidoGrafico.replaceChildren(crearMensajeCargando('Consultando los últimos meses…'));
+  canceladorObservadorGastosGrafico = observarGastosEnRango(`${primerPeriodo}-01`, limiteSuperior, (resultado) => {
+    if (versionActual !== versionSuscripcionGrafico) return;
+    gastosHistoricosGrafico = resultado;
+    gastoRangoGraficoCargado = true;
+    actualizarGraficoMensualSiListo();
+  }, (error) => {
+    if (versionActual !== versionSuscripcionGrafico) return;
+    console.error('No se pudo consultar la evolución mensual:', error);
+    elementos.contenidoGrafico.replaceChildren(crearMensajeVacio(obtenerMensajeDeError(error)));
+  });
+
+  for (const periodo of periodosGraficoActivo) {
+    mesesHistoricosGrafico[periodo] = crearMesVacio(periodo);
+    ingresosHistoricosGrafico[periodo] = [];
+    const cancelarMes = observarMes(periodo, (mes) => {
+      if (versionActual !== versionSuscripcionGrafico) return;
+      mesesHistoricosGrafico[periodo] = mes;
+      periodosMesGraficoCargados.add(periodo);
+      actualizarGraficoMensualSiListo();
+    }, (error) => manejarErrorGraficoHistorico(error, versionActual));
+    const cancelarIngresos = observarIngresosAdicionales(periodo, (ingresos) => {
+      if (versionActual !== versionSuscripcionGrafico) return;
+      ingresosHistoricosGrafico[periodo] = ingresos;
+      periodosIngresosGraficoCargados.add(periodo);
+      actualizarGraficoMensualSiListo();
+    }, (error) => manejarErrorGraficoHistorico(error, versionActual));
+    canceladoresObservadoresHistorial.push(cancelarMes, cancelarIngresos);
+  }
+}
+
+function manejarErrorGraficoHistorico(error, versionActual) {
+  if (versionActual !== versionSuscripcionGrafico) return;
+  console.error('No se pudieron consultar datos históricos del gráfico:', error);
+  mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
+}
+
+function seleccionarGrafico(tipo) {
+  if (!graficosDesplegados || !DEFINICIONES_GRAFICOS[tipo]) return;
+  detenerObservadoresGraficoMensual();
+  tipoGraficoActivo = tipo;
+  const definicion = DEFINICIONES_GRAFICOS[tipo];
+  elementos.tituloGraficoActivo.textContent = definicion.titulo;
+  elementos.descripcionGraficoActivo.textContent = definicion.descripcion;
+  elementos.panelGrafico.hidden = false;
+  elementos.ayudaGraficos.hidden = true;
+  elementos.controlAlcanceGrafico.hidden = tipo !== 'mensual';
+  actualizarEstadoBotonesGraficos();
+  if (tipo === 'mensual') prepararObservadoresGraficoMensual();
+  else renderizarGraficoActivo();
+}
+
+function crearBarraGrafico(etiqueta, valor, maximo, clase = '') {
+  const fila = document.createElement('div');
+  fila.className = `fila-grafico ${clase}`.trim();
+  const cabecera = document.createElement('div');
+  cabecera.className = 'fila-grafico__cabecera';
+  const nombre = document.createElement('span');
+  nombre.className = 'fila-grafico__etiqueta';
+  nombre.textContent = etiqueta;
+  const importe = document.createElement('strong');
+  importe.className = 'fila-grafico__importe';
+  importe.textContent = formatearMoneda(valor);
+  cabecera.append(nombre, importe);
+  const pista = document.createElement('div');
+  pista.className = 'fila-grafico__pista';
+  const barra = document.createElement('span');
+  barra.className = 'fila-grafico__barra';
+  const ancho = maximo > 0 ? Math.max(0, Math.min(100, Math.abs(Number(valor)) / maximo * 100)) : 0;
+  barra.style.width = `${ancho}%`;
+  pista.append(barra);
+  fila.append(cabecera, pista);
+  return fila;
+}
+
+function renderizarListaBarras(datos, clase = '') {
+  elementos.contenidoGrafico.replaceChildren();
+  if (!datos.length || datos.every((dato) => dato.monto === 0)) {
+    elementos.contenidoGrafico.append(crearMensajeVacio('No hay datos suficientes para este gráfico en el mes seleccionado.'));
+    return;
+  }
+  const maximo = Math.max(...datos.map((dato) => Math.abs(dato.monto)), 1);
+  const lista = document.createElement('div');
+  lista.className = `lista-grafico-barras ${clase}`.trim();
+  datos.forEach((dato) => lista.append(crearBarraGrafico(dato.etiqueta, dato.monto, maximo)));
+  elementos.contenidoGrafico.append(lista);
+}
+
+function renderizarGraficoActivo() {
+  if (!tipoGraficoActivo || tipoGraficoActivo === 'mensual' || elementos.panelGrafico.hidden) return;
+  if (tipoGraficoActivo === 'categorias') {
+    const datos = agruparImportesPor(gastosMes, (gasto) => categorias.find((item) => item.id === gasto.categoriaId)?.nombre || 'Categoría no disponible')
+      .map((dato) => ({ etiqueta: dato.clave, monto: dato.monto }));
+    renderizarListaBarras(datos);
+    return;
+  }
+  if (tipoGraficoActivo === 'personas') {
+    const agrupados = agruparImportesPor(gastosMes, (gasto) => gasto.responsable || 'sin-asignar');
+    const datos = ['mauri', 'ro'].map((persona) => ({
+      etiqueta: persona === 'mauri' ? 'Mauri' : 'Ro',
+      monto: agrupados.find((dato) => dato.clave === persona)?.monto || 0,
+    }));
+    renderizarListaBarras(datos, 'lista-grafico-barras--personas');
+    return;
+  }
+  if (tipoGraficoActivo === 'medios') {
+    const datos = agruparImportesPor(gastosMes, (gasto) => mediosPago.find((item) => item.id === gasto.medioPagoId)?.nombre || 'Medio no disponible')
+      .map((dato) => ({ etiqueta: dato.clave, monto: dato.monto }));
+    renderizarListaBarras(datos);
+    return;
+  }
+  if (tipoGraficoActivo === 'semanal') {
+    const datos = agruparGastosPorSemana(gastosMes, periodoSeleccionado)
+      .map((grupo) => ({ etiqueta: grupo.etiqueta, monto: grupo.monto }));
+    renderizarListaBarras(datos, 'lista-grafico-barras--semanal');
+    return;
+  }
+  if (tipoGraficoActivo === 'ingresos-gastos') {
+    const resumen = calcularResumenMensual({ mes: mesSeleccionado, gastos: gastosMes, ingresosAdicionales });
+    const datos = [
+      { etiqueta: 'Ingresos totales', monto: resumen.totalIngresos },
+      { etiqueta: 'Gastos totales', monto: resumen.totalGastos },
+    ];
+    renderizarListaBarras(datos, 'lista-grafico-barras--comparacion');
+    const saldo = document.createElement('p');
+    saldo.className = `resumen-saldo-grafico${resumen.saldoDisponible < 0 ? ' resumen-saldo-grafico--negativo' : ''}`;
+    saldo.textContent = `Saldo disponible del mes: ${formatearMoneda(resumen.saldoDisponible)}`;
+    elementos.contenidoGrafico.append(saldo);
+  }
+}
+
+function actualizarGraficoMensualSiListo() {
+  const todosLosMesesListos = periodosGraficoActivo.every((periodo) =>
+    periodosMesGraficoCargados.has(periodo) && periodosIngresosGraficoCargados.has(periodo),
+  );
+  if (!gastoRangoGraficoCargado || !todosLosMesesListos) {
+    elementos.contenidoGrafico.replaceChildren(crearMensajeCargando('Consultando los últimos meses…'));
+    return;
+  }
+  renderizarGraficoEvolucionMensual();
+}
+
+function renderizarGraficoEvolucionMensual() {
+  if (tipoGraficoActivo !== 'mensual' || elementos.panelGrafico.hidden) return;
+  if (!periodosGraficoActivo.length) return;
+  const resumenes = crearResumenesEvolucionMensual(
+    periodosGraficoActivo,
+    gastosHistoricosGrafico,
+    mesesHistoricosGrafico,
+    ingresosHistoricosGrafico,
+  );
+  const maximo = Math.max(1, ...resumenes.flatMap((resumen) => [resumen.totalIngresos, resumen.totalGastos, Math.abs(resumen.saldoDisponible)]));
+  const contenedor = document.createElement('div');
+  contenedor.className = 'grafico-evolucion-mensual';
+
+  for (const resumen of resumenes) {
+    const bloque = document.createElement('article');
+    bloque.className = 'bloque-mes-grafico';
+    const titulo = document.createElement('h4');
+    titulo.textContent = formatearPeriodo(resumen.periodo);
+    bloque.append(titulo);
+    const series = [
+      { nombre: 'Ingresos', valor: resumen.totalIngresos, clase: 'serie-grafico--ingresos' },
+      { nombre: 'Gastos', valor: resumen.totalGastos, clase: 'serie-grafico--gastos' },
+      { nombre: 'Saldo', valor: resumen.saldoDisponible, clase: resumen.saldoDisponible < 0 ? 'serie-grafico--negativo' : 'serie-grafico--saldo' },
+    ];
+    for (const serie of series) {
+      const fila = document.createElement('div');
+      fila.className = `serie-grafico ${serie.clase}`;
+      const etiqueta = document.createElement('span');
+      etiqueta.className = 'serie-grafico__nombre';
+      etiqueta.textContent = serie.nombre;
+      const pista = document.createElement('div');
+      pista.className = 'serie-grafico__pista';
+      const barra = document.createElement('span');
+      barra.className = 'serie-grafico__barra';
+      barra.style.width = `${Math.min(100, Math.abs(serie.valor) / maximo * 100)}%`;
+      pista.append(barra);
+      const valor = document.createElement('strong');
+      valor.className = 'serie-grafico__valor';
+      valor.textContent = formatearMoneda(serie.valor);
+      fila.append(etiqueta, pista, valor);
+      bloque.append(fila);
+    }
+    contenedor.append(bloque);
+  }
+  elementos.contenidoGrafico.replaceChildren(contenedor);
 }
 
 function crearTarjetaGasto(gasto) {
@@ -1193,6 +1621,26 @@ elementos.botonCerrarSesion?.addEventListener('click', async () => {
 
 elementos.botonVistaCarga.addEventListener('click', () => mostrarVista('carga'));
 elementos.botonVistaConsulta.addEventListener('click', () => mostrarVista('consulta'));
+elementos.botonSubvistaMovimientos.addEventListener('click', () => mostrarSubvistaConsulta('movimientos'));
+elementos.botonSubvistaDashboard.addEventListener('click', () => mostrarSubvistaConsulta('dashboard'));
+elementos.botonSubvistaGraficos.addEventListener('click', () => mostrarSubvistaConsulta('graficos'));
+elementos.grupoBotonesGraficos.addEventListener('click', (evento) => {
+  const boton = evento.target.closest('[data-tipo-grafico]');
+  if (boton) seleccionarGrafico(boton.dataset.tipoGrafico);
+});
+elementos.selectorCantidadMeses.addEventListener('change', () => {
+  if (tipoGraficoActivo === 'mensual' && graficosDesplegados) prepararObservadoresGraficoMensual();
+});
+const controlesFiltro = [
+  elementos.filtroCategoria, elementos.filtroPersona, elementos.filtroMedioPago,
+  elementos.filtroMontoMinimo, elementos.filtroMontoMaximo,
+  elementos.filtroFechaDesde, elementos.filtroFechaHasta, elementos.filtroOrden,
+];
+controlesFiltro.forEach((control) => {
+  control.addEventListener('input', renderizarGastos);
+  control.addEventListener('change', renderizarGastos);
+});
+elementos.botonLimpiarFiltros.addEventListener('click', limpiarFiltros);
 elementos.formularioGasto.addEventListener('submit', guardarGastoDesdeFormulario);
 elementos.botonCancelarEdicion.addEventListener('click', cancelarEdicion);
 elementos.categoriaGasto.addEventListener('change', () => {

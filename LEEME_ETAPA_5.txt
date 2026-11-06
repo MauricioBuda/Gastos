@@ -1,0 +1,55 @@
+PROYECTO GASTOS — ETAPA 5: CONSULTA, FILTROS, DASHBOARD Y GRÁFICOS
+
+QUÉ INCORPORA
+- La sección Consultar gastos se organiza en tres vistas: Movimientos, Dashboard y Gráficos.
+- Movimientos mantiene el orden más reciente primero y permite combinar filtros por categoría, persona, medio de pago, importe mínimo/máximo y fechas, además de ordenar por fecha o importe.
+- Los filtros afectan solamente la lista de movimientos. No modifican los datos utilizados por el Dashboard ni por los gráficos.
+- Dashboard muestra el resumen mensual ya implementado: sueldos, ingresos adicionales, gastos y saldo disponible, con observación del saldo.
+- Se incorporan seis visualizaciones: gastos por categoría, persona, medio de pago, evolución semanal, evolución mensual e ingresos vs. gastos.
+- La evolución mensual compara ingresos totales (sueldos + ingresos adicionales), gastos y saldo disponible para los últimos 3, 6 o 12 meses.
+- Los gráficos y el Dashboard utilizan el mes seleccionado en el selector común. La evolución mensual utiliza el rango elegido y termina en el mes seleccionado.
+- El botón Gráficos abre/cierra el selector de gráficos. Al cerrar, también se oculta el gráfico y se detienen las consultas históricas. Al volver a abrir, no queda ningún gráfico seleccionado.
+- Se deja preparada la referencia del favicon en index.html: /favicon.png.
+
+FAVICON
+Cuando tengas tu imagen, guardala en public/favicon.png. No hace falta modificar index.html porque la referencia ya está agregada:
+<link rel="icon" type="image/png" href="/favicon.png" />
+La carpeta public se publica desde la raíz del sitio en Vite y Vercel.
+
+INSTALACIÓN
+1. Detené el servidor de Vite con Ctrl+C.
+2. Hacé una copia de seguridad de la carpeta del proyecto.
+3. Extraé el contenido de este ZIP directamente en la raíz del proyecto Vite, donde está package.json.
+4. Permití reemplazar index.html y los archivos incluidos dentro de src, tests, documentacion y public.
+5. Conservá sin reemplazar: package.json, package-lock.json, node_modules y .env.
+6. No hace falta ejecutar npm install: esta etapa no agrega dependencias.
+7. No hace falta modificar ni volver a publicar las reglas de Firestore: esta etapa utiliza las colecciones y reglas ya configuradas.
+
+PRUEBAS LOCALES
+Desde la raíz del proyecto, ejecutá uno por uno:
+node tests/pruebas-logica.mjs
+node tests/pruebas-etapa-4.mjs
+node tests/pruebas-interfaz-etapa-4-1.mjs
+node tests/pruebas-etapa-5.mjs
+node tests/pruebas-interfaz-etapa-5.mjs
+
+Después iniciá la aplicación con:
+npm run dev
+
+COMPROBACIONES MANUALES
+- Entrá en Consultar gastos y comprobá las tres vistas.
+- Combiná dos o más filtros y verificá que solamente cambie la lista.
+- Probá ordenar por fecha y por monto.
+- Abrí Dashboard y cambiá el mes.
+- Abrí Gráficos y probá individualmente los seis botones.
+- En Evolución mensual, cambiá entre 3, 6 y 12 meses. Deben verse ingresos, gastos y saldo.
+- Cerrá y volvé a abrir Gráficos: no debe quedar un gráfico seleccionado.
+- Cambiá a Cargar gasto mientras el gráfico mensual está activo y luego volvé a Consultar: no debe quedar una consulta histórica anterior ejecutándose.
+- Probá desde celular o emulación responsive.
+
+IMPORTANTE SOBRE LA VALIDACIÓN
+Las pruebas automáticas de esta etapa comprueban funciones puras, estructura HTML, selectores, organización CSS y sintaxis JavaScript. No reemplazan la prueba en el navegador contra el Firebase real. Después de validar localhost, hacé commit/push del proyecto para que Vercel genere un nuevo despliegue con las variables de entorno que ya configuraste.
+
+
+CORRECCIÓN DE COMPATIBILIDAD — ETAPA 5.1
+Se corrigió el nombre de la variable que conserva el cancelador de la escucha histórica de gastos. La referencia anterior no coincidía con la variable declarada y provocaba un ReferenceError al iniciar la aplicación o cambiar de subvista; ese error interrumpía la inicialización privada antes de preparar los catálogos y las consultas de Firestore. No cambian las colecciones, los documentos, los datos existentes ni las reglas de seguridad.

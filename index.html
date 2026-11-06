@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#eee4d5" />
     <meta name="description" content="Control privado de gastos compartidos de Mauri y Ro." />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <title>Gastos | Control compartido</title>
   </head>
   <body>
@@ -74,101 +75,6 @@
             </button>
           </nav>
 
-          <section class="panel-resumen-mensual" id="panel-resumen-mensual" aria-labelledby="titulo-resumen-mensual">
-            <div class="encabezado-resumen-mensual">
-              <div>
-                <span class="etiqueta-superior">BALANCE COMPARTIDO</span>
-                <h2 id="titulo-resumen-mensual">Resumen mensual</h2>
-                <p id="estado-sueldos-resumen">Los gastos pueden cargarse aunque falte ingresar algún sueldo.</p>
-              </div>
-              <div class="selector-periodo">
-                <label for="selector-mes">Mes de gestión</label>
-                <input id="selector-mes" type="month" />
-              </div>
-            </div>
-
-            <div class="rejilla-resumen-mensual">
-              <article class="tarjeta-resumen tarjeta-resumen--inicial">
-                <span class="tarjeta-resumen__etiqueta">Saldo inicial</span>
-                <button class="tarjeta-resumen__valor boton-detalle-sueldos" id="boton-detalle-sueldos" type="button" aria-expanded="false" aria-controls="detalle-sueldos">
-                  <span id="total-sueldos">—</span>
-                  <span class="indicador-detalle" aria-hidden="true">ⓘ</span>
-                </button>
-                <div class="detalle-sueldos" id="detalle-sueldos" role="tooltip" aria-hidden="true">
-                  <span id="detalle-sueldo-mauri">Mauri: pendiente</span>
-                  <span id="detalle-sueldo-ro">Ro: pendiente</span>
-                </div>
-              </article>
-
-              <article class="tarjeta-resumen">
-                <span class="tarjeta-resumen__etiqueta">Ingresos adicionales</span>
-                <strong class="tarjeta-resumen__valor" id="total-ingresos-adicionales">—</strong>
-              </article>
-
-              <article class="tarjeta-resumen">
-                <span class="tarjeta-resumen__etiqueta">Gastos totales</span>
-                <strong class="tarjeta-resumen__valor" id="total-gastos-mes">—</strong>
-              </article>
-
-              <article class="tarjeta-resumen tarjeta-resumen--disponible" id="tarjeta-saldo-disponible">
-                <span class="tarjeta-resumen__etiqueta">Saldo restante</span>
-                <strong class="tarjeta-resumen__valor" id="saldo-disponible">—</strong>
-              </article>
-            </div>
-
-            <div class="estado-carga-resumen" id="estado-carga-resumen" role="status" aria-live="polite" hidden>
-              <span class="indicador-carga" aria-hidden="true"></span>
-              <span>Actualizando el balance…</span>
-            </div>
-
-            <details class="panel-desplegable panel-sueldos" id="panel-sueldos">
-              <summary>Administrar sueldos del mes</summary>
-              <p class="texto-ayuda-panel">Cada sueldo se carga por separado. Cuando ya está registrado, queda oculto y se puede corregir con el lápiz.</p>
-              <div class="contenedor-sueldos" id="contenedor-sueldos">
-                <p class="mensaje-vacio">Cargando sueldos…</p>
-              </div>
-            </details>
-
-            <details class="panel-desplegable panel-ingresos-adicionales" id="panel-ingresos-adicionales">
-              <summary>
-                <span>Ingresos adicionales</span>
-                <strong id="cantidad-ingresos-adicionales">0</strong>
-              </summary>
-              <form id="formulario-ingreso-adicional" class="formulario-ingreso-adicional" novalidate>
-                <div class="campo-formulario campo-formulario--compacto">
-                  <label for="monto-ingreso-adicional">Monto</label>
-                  <input id="monto-ingreso-adicional" name="monto" type="number" inputmode="numeric" min="1" step="1" placeholder="0" required />
-                </div>
-                <div class="campo-formulario campo-formulario--compacto">
-                  <label for="procedencia-ingreso-adicional">Procedencia</label>
-                  <input id="procedencia-ingreso-adicional" name="procedencia" type="text" maxlength="300" placeholder="Ej.: Instalación de cámaras" required />
-                </div>
-                <button class="boton-secundario boton-agregar-ingreso" id="boton-agregar-ingreso" type="submit">Agregar ingreso</button>
-              </form>
-              <div class="lista-ingresos-adicionales" id="lista-ingresos-adicionales" aria-live="polite">
-                <p class="mensaje-vacio">Todavía no hay ingresos adicionales en este mes.</p>
-              </div>
-            </details>
-
-            <section class="panel-observacion-saldo" aria-labelledby="titulo-observacion-saldo">
-              <div class="encabezado-observacion-saldo">
-                <div>
-                  <h3 id="titulo-observacion-saldo">Destino del saldo restante</h3>
-                  <p id="texto-observacion-saldo">Todavía no agregaron una observación para este mes.</p>
-                </div>
-                <button class="boton-texto boton-observacion" id="boton-observacion" type="button">Agregar observación</button>
-              </div>
-              <form id="formulario-observacion-saldo" class="formulario-observacion-saldo" hidden>
-                <label class="texto-solo-lectores" for="observacion-saldo">Observación del saldo</label>
-                <textarea id="observacion-saldo" rows="3" maxlength="10000" placeholder="Ej.: Lo pusimos en el plazo fijo para que genere intereses."></textarea>
-                <div class="acciones-observacion">
-                  <button class="boton-principal" id="boton-guardar-observacion" type="submit">Guardar observación</button>
-                  <button class="boton-secundario" id="boton-cancelar-observacion" type="button">Cancelar</button>
-                </div>
-              </form>
-            </section>
-          </section>
-
           <section class="panel-funcional" id="vista-carga" aria-labelledby="titulo-carga">
             <div class="encabezado-panel">
               <div>
@@ -234,22 +140,235 @@
             </form>
           </section>
 
-          <section class="panel-funcional" id="vista-consulta" aria-labelledby="titulo-consulta" hidden>
-            <div class="encabezado-panel encabezado-panel--consulta">
-              <div>
-                <span class="etiqueta-superior">HISTORIAL</span>
-                <h2 id="titulo-consulta">Movimientos</h2>
-                <p>Los gastos se ordenan por fecha, del más reciente al más antiguo.</p>
+          <section class="panel-consulta" id="vista-consulta" hidden aria-label="Consulta de gastos">
+            <nav class="navegacion-consulta" aria-label="Visualizaciones de gastos">
+              <button class="boton-vista-consulta boton-vista-consulta--activo" id="boton-subvista-movimientos" type="button" aria-pressed="true">
+                <span aria-hidden="true">☷</span> Movimientos
+              </button>
+              <button class="boton-vista-consulta" id="boton-subvista-dashboard" type="button" aria-pressed="false">
+                <span aria-hidden="true">▦</span> Dashboard
+              </button>
+              <button class="boton-vista-consulta" id="boton-subvista-graficos" type="button" aria-pressed="false">
+                <span aria-hidden="true">▥</span> Gráficos
+              </button>
+            </nav>
+
+            <div class="barra-consulta-periodo">
+              <div class="selector-periodo">
+                <label for="selector-mes">Mes consultado</label>
+                <input id="selector-mes" type="month" />
               </div>
+              <p>Los datos corresponden al mes seleccionado.</p>
             </div>
 
-            <div class="resumen-listado" id="resumen-listado">
-              <span id="cantidad-movimientos">Cargando movimientos…</span>
-              <strong id="total-movimientos"></strong>
-            </div>
-            <div class="lista-movimientos" id="lista-movimientos" aria-live="polite">
-              <p class="mensaje-vacio">Cargando movimientos…</p>
-            </div>
+            <section class="panel-funcional panel-subvista" id="subvista-movimientos" aria-labelledby="titulo-consulta">
+              <div class="encabezado-panel encabezado-panel--consulta">
+                <div>
+                  <span class="etiqueta-superior">HISTORIAL</span>
+                  <h2 id="titulo-consulta">Movimientos</h2>
+                  <p>Los gastos se ordenan por fecha, del más reciente al más antiguo.</p>
+                </div>
+              </div>
+
+              <details class="panel-filtros" id="panel-filtros">
+                <summary>
+                  <span>Filtrar y ordenar movimientos</span>
+                  <span class="contador-filtros" id="contador-filtros">0 filtros</span>
+                </summary>
+                <div class="rejilla-filtros">
+                  <div class="campo-formulario campo-formulario--compacto">
+                    <label for="filtro-categoria">Categoría</label>
+                    <select id="filtro-categoria"><option value="">Todas</option></select>
+                  </div>
+                  <div class="campo-formulario campo-formulario--compacto">
+                    <label for="filtro-persona">Quién realizó el gasto</label>
+                    <select id="filtro-persona">
+                      <option value="">Ambos</option>
+                      <option value="mauri">Mauri</option>
+                      <option value="ro">Ro</option>
+                    </select>
+                  </div>
+                  <div class="campo-formulario campo-formulario--compacto">
+                    <label for="filtro-medio-pago">Medio de pago</label>
+                    <select id="filtro-medio-pago"><option value="">Todos</option></select>
+                  </div>
+                  <div class="campo-formulario campo-formulario--compacto">
+                    <label for="filtro-monto-minimo">Importe mínimo</label>
+                    <input id="filtro-monto-minimo" type="number" inputmode="numeric" min="0" step="1" placeholder="Sin mínimo" />
+                  </div>
+                  <div class="campo-formulario campo-formulario--compacto">
+                    <label for="filtro-monto-maximo">Importe máximo</label>
+                    <input id="filtro-monto-maximo" type="number" inputmode="numeric" min="0" step="1" placeholder="Sin máximo" />
+                  </div>
+                  <div class="campo-formulario campo-formulario--compacto">
+                    <label for="filtro-fecha-desde">Desde</label>
+                    <input id="filtro-fecha-desde" type="date" />
+                  </div>
+                  <div class="campo-formulario campo-formulario--compacto">
+                    <label for="filtro-fecha-hasta">Hasta</label>
+                    <input id="filtro-fecha-hasta" type="date" />
+                  </div>
+                  <div class="campo-formulario campo-formulario--compacto">
+                    <label for="filtro-orden">Ordenar por</label>
+                    <select id="filtro-orden">
+                      <option value="fecha-desc">Fecha: más reciente primero</option>
+                      <option value="fecha-asc">Fecha: más antigua primero</option>
+                      <option value="monto-desc">Importe: mayor a menor</option>
+                      <option value="monto-asc">Importe: menor a mayor</option>
+                      <option value="categoria-asc">Categoría: A a Z</option>
+                      <option value="categoria-desc">Categoría: Z a A</option>
+                      <option value="persona-asc">Persona: Mauri primero</option>
+                      <option value="persona-desc">Persona: Ro primero</option>
+                      <option value="medio-asc">Medio de pago: A a Z</option>
+                      <option value="medio-desc">Medio de pago: Z a A</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="acciones-filtros">
+                  <p id="ayuda-filtros" aria-live="polite">Los filtros se pueden combinar.</p>
+                  <button class="boton-texto" id="boton-limpiar-filtros" type="button">Limpiar filtros</button>
+                </div>
+              </details>
+
+              <div class="resumen-listado" id="resumen-listado">
+                <span id="cantidad-movimientos">Cargando movimientos…</span>
+                <strong id="total-movimientos"></strong>
+              </div>
+              <div class="lista-movimientos" id="lista-movimientos" aria-live="polite">
+                <p class="mensaje-vacio">Cargando movimientos…</p>
+              </div>
+            </section>
+
+            <section class="panel-subvista" id="subvista-dashboard" hidden aria-label="Dashboard mensual">
+                        <section class="panel-resumen-mensual" id="panel-resumen-mensual" aria-labelledby="titulo-resumen-mensual">
+                          <div class="encabezado-resumen-mensual">
+                            <div>
+                              <span class="etiqueta-superior">BALANCE COMPARTIDO</span>
+                              <h2 id="titulo-resumen-mensual">Resumen mensual</h2>
+                              <p id="estado-sueldos-resumen">Los gastos pueden cargarse aunque falte ingresar algún sueldo.</p>
+                            </div>
+                          </div>
+              
+                          <div class="rejilla-resumen-mensual">
+                            <article class="tarjeta-resumen tarjeta-resumen--inicial">
+                              <span class="tarjeta-resumen__etiqueta">Saldo inicial</span>
+                              <button class="tarjeta-resumen__valor boton-detalle-sueldos" id="boton-detalle-sueldos" type="button" aria-expanded="false" aria-controls="detalle-sueldos">
+                                <span id="total-sueldos">—</span>
+                                <span class="indicador-detalle" aria-hidden="true">ⓘ</span>
+                              </button>
+                              <div class="detalle-sueldos" id="detalle-sueldos" role="tooltip" aria-hidden="true">
+                                <span id="detalle-sueldo-mauri">Mauri: pendiente</span>
+                                <span id="detalle-sueldo-ro">Ro: pendiente</span>
+                              </div>
+                            </article>
+              
+                            <article class="tarjeta-resumen">
+                              <span class="tarjeta-resumen__etiqueta">Ingresos adicionales</span>
+                              <strong class="tarjeta-resumen__valor" id="total-ingresos-adicionales">—</strong>
+                            </article>
+              
+                            <article class="tarjeta-resumen">
+                              <span class="tarjeta-resumen__etiqueta">Gastos totales</span>
+                              <strong class="tarjeta-resumen__valor" id="total-gastos-mes">—</strong>
+                            </article>
+              
+                            <article class="tarjeta-resumen tarjeta-resumen--disponible" id="tarjeta-saldo-disponible">
+                              <span class="tarjeta-resumen__etiqueta">Saldo restante</span>
+                              <strong class="tarjeta-resumen__valor" id="saldo-disponible">—</strong>
+                            </article>
+                          </div>
+              
+                          <div class="estado-carga-resumen" id="estado-carga-resumen" role="status" aria-live="polite" hidden>
+                            <span class="indicador-carga" aria-hidden="true"></span>
+                            <span>Actualizando el balance…</span>
+                          </div>
+              
+                          <details class="panel-desplegable panel-sueldos" id="panel-sueldos">
+                            <summary>Administrar sueldos del mes</summary>
+                            <p class="texto-ayuda-panel">Cada sueldo se carga por separado. Cuando ya está registrado, queda oculto y se puede corregir con el lápiz.</p>
+                            <div class="contenedor-sueldos" id="contenedor-sueldos">
+                              <p class="mensaje-vacio">Cargando sueldos…</p>
+                            </div>
+                          </details>
+              
+                          <details class="panel-desplegable panel-ingresos-adicionales" id="panel-ingresos-adicionales">
+                            <summary>
+                              <span>Ingresos adicionales</span>
+                              <strong id="cantidad-ingresos-adicionales">0</strong>
+                            </summary>
+                            <form id="formulario-ingreso-adicional" class="formulario-ingreso-adicional" novalidate>
+                              <div class="campo-formulario campo-formulario--compacto">
+                                <label for="monto-ingreso-adicional">Monto</label>
+                                <input id="monto-ingreso-adicional" name="monto" type="number" inputmode="numeric" min="1" step="1" placeholder="0" required />
+                              </div>
+                              <div class="campo-formulario campo-formulario--compacto">
+                                <label for="procedencia-ingreso-adicional">Procedencia</label>
+                                <input id="procedencia-ingreso-adicional" name="procedencia" type="text" maxlength="300" placeholder="Ej.: Instalación de cámaras" required />
+                              </div>
+                              <button class="boton-secundario boton-agregar-ingreso" id="boton-agregar-ingreso" type="submit">Agregar ingreso</button>
+                            </form>
+                            <div class="lista-ingresos-adicionales" id="lista-ingresos-adicionales" aria-live="polite">
+                              <p class="mensaje-vacio">Todavía no hay ingresos adicionales en este mes.</p>
+                            </div>
+                          </details>
+              
+                          <section class="panel-observacion-saldo" aria-labelledby="titulo-observacion-saldo">
+                            <div class="encabezado-observacion-saldo">
+                              <div>
+                                <h3 id="titulo-observacion-saldo">Destino del saldo restante</h3>
+                                <p id="texto-observacion-saldo">Todavía no agregaron una observación para este mes.</p>
+                              </div>
+                              <button class="boton-texto boton-observacion" id="boton-observacion" type="button">Agregar observación</button>
+                            </div>
+                            <form id="formulario-observacion-saldo" class="formulario-observacion-saldo" hidden>
+                              <label class="texto-solo-lectores" for="observacion-saldo">Observación del saldo</label>
+                              <textarea id="observacion-saldo" rows="3" maxlength="10000" placeholder="Ej.: Lo pusimos en el plazo fijo para que genere intereses."></textarea>
+                              <div class="acciones-observacion">
+                                <button class="boton-principal" id="boton-guardar-observacion" type="submit">Guardar observación</button>
+                                <button class="boton-secundario" id="boton-cancelar-observacion" type="button">Cancelar</button>
+                              </div>
+                            </form>
+                          </section>
+                        </section>
+            </section>
+
+            <section class="panel-subvista panel-subvista-graficos" id="subvista-graficos" hidden aria-labelledby="titulo-graficos">
+              <div class="encabezado-panel">
+                <div>
+                  <span class="etiqueta-superior">ANÁLISIS DEL PERÍODO</span>
+                  <h2 id="titulo-graficos">Gráficos</h2>
+                  <p>Elegí una visualización. Los gráficos utilizan todos los movimientos del mes, independientemente de los filtros de la lista.</p>
+                </div>
+              </div>
+              <div class="grupo-botones-graficos" id="grupo-botones-graficos" hidden>
+                <button class="boton-grafico" type="button" data-tipo-grafico="categorias">Por categoría</button>
+                <button class="boton-grafico" type="button" data-tipo-grafico="personas">Por persona</button>
+                <button class="boton-grafico" type="button" data-tipo-grafico="medios">Por medio de pago</button>
+                <button class="boton-grafico" type="button" data-tipo-grafico="semanal">Evolución semanal</button>
+                <button class="boton-grafico" type="button" data-tipo-grafico="mensual">Evolución mensual</button>
+                <button class="boton-grafico" type="button" data-tipo-grafico="ingresos-gastos">Ingresos vs. gastos</button>
+              </div>
+              <div class="panel-grafico" id="panel-grafico" hidden>
+                <div class="encabezado-grafico">
+                  <div>
+                    <h3 id="titulo-grafico-activo">Visualización</h3>
+                    <p id="descripcion-grafico-activo"></p>
+                  </div>
+                  <div class="selector-alcance-grafico" id="control-alcance-grafico" hidden>
+                    <label for="selector-cantidad-meses">Período</label>
+                    <select id="selector-cantidad-meses">
+                      <option value="3">Últimos 3 meses</option>
+                      <option value="6" selected>Últimos 6 meses</option>
+                      <option value="12">Últimos 12 meses</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="contenido-grafico" id="contenido-grafico" aria-live="polite">
+                  <p class="mensaje-vacio">Seleccioná un gráfico para comenzar.</p>
+                </div>
+              </div>
+              <div class="ayuda-graficos" id="ayuda-graficos">Seleccioná uno de los gráficos para visualizar los datos del período.</div>
+            </section>
           </section>
         </section>
 

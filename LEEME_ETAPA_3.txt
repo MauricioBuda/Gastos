@@ -1,0 +1,55 @@
+PROYECTO GASTOS - ETAPA 3: CARGA Y CONSULTA DE GASTOS
+
+QUÉ INCORPORA ESTA ENTREGA
+- Pantalla privada posterior al inicio de sesión.
+- Navegación entre las vistas «Cargar gasto» y «Consultar gastos».
+- Formulario de gastos con monto entero en pesos, categoría, medio de pago, responsable y fecha editable.
+- Fecha precargada con el día actual del dispositivo al iniciar una carga nueva.
+- Responsable precargado según la cuenta iniciada, pero modificable manualmente.
+- Selección de categorías y medios de pago desde Firestore.
+- Al elegir «Otros», se habilita el campo para agregar una categoría o medio personalizado.
+- Si la opción personalizada ya existe, se reutiliza y no se crea un duplicado. Si estaba inactiva, se reactiva.
+- Lista de gastos del mes seleccionado, ordenada por fecha descendente.
+- Cambio de mes para consultar los movimientos de meses anteriores.
+- Edición con confirmación al guardar y eliminación con confirmación previa.
+- Al modificar la fecha de un gasto, el movimiento pasa al mes indicado por esa fecha.
+- Resumen del listado con cantidad e importe total de los movimientos visibles del mes.
+- CSS separado en dos grandes bloques: primero vista web/escritorio y después vista celular. Clases descriptivas en español.
+
+ANTES DE COPIAR
+1. Detené Vite con Ctrl+C.
+2. Hacé una copia de seguridad de la carpeta actual del proyecto.
+3. Extraé este ZIP en la raíz de tu proyecto Vite (la carpeta donde está package.json).
+4. Permití reemplazar los archivos existentes cuando Windows lo solicite.
+5. Conservá tu package.json, package-lock.json, node_modules y tu archivo .env actual.
+6. No es necesario volver a instalar Firebase.
+
+FIRESTORE
+- Esta etapa utiliza las colecciones y reglas de la etapa anterior.
+- No se modificó firestore.rules en esta entrega; no hace falta volver a publicarlas si ya publicaste las reglas de la etapa 2.
+- No borres ni vuelvas a crear las colecciones existentes.
+- Los gastos nuevos se guardan en la colección global «gastos». El campo fecha (AAAA-MM-DD) determina el mes al que pertenecen.
+
+CÓMO PROBAR
+1. Ejecutá: npm run dev
+2. Abrí la dirección local que informe Vite.
+3. Iniciá sesión con Mauri o Ro.
+4. Entrá en «Cargar gasto».
+5. Registrá un gasto de prueba real/ficticio que luego puedas eliminar. Usá un monto entero y completá todos los campos.
+6. Probá seleccionar «Otros» en categoría y escribir una categoría de prueba. Al guardar, la nueva categoría queda disponible para próximas cargas.
+7. Entrá en «Consultar gastos» y comprobá que aparezca el movimiento.
+8. Probá editarlo. Al guardar, la aplicación pide confirmación.
+9. Probá modificar su fecha a otro mes y comprobá que deja de aparecer en el mes anterior y aparece en el mes nuevo.
+10. Probá eliminarlo. La aplicación pide confirmación antes de hacerlo.
+
+REGLAS DE USO IMPORTANTES
+- Una carga nueva siempre completa la fecha con la fecha actual del dispositivo, incluso si se está consultando otro mes. La fecha se puede cambiar antes de guardar.
+- Después de guardar, la lista navega al mes que corresponde a la fecha guardada para que el movimiento quede visible.
+- La persona responsable se precarga desde la cuenta iniciada, pero se puede cambiar.
+- «Otros» es una opción especial y no se guarda como categoría/medio final: se usa para crear o reutilizar una opción con el nombre escrito.
+- No se pide confirmación al crear. Sí se pide al guardar una edición y antes de eliminar.
+- Este paquete implementa la primera funcionalidad de gastos. Sueldos, ingresos adicionales, dashboard, gráficos, filtros avanzados y gestión visual completa de catálogos se incorporarán en etapas posteriores.
+
+PRUEBAS
+- Ejecutá la prueba de lógica existente con: node tests/pruebas-logica.mjs
+- La compilación completa de Vite debe verificarse en tu entorno, que conserva las dependencias instaladas. Si aparece un error, no ejecutes npm audit fix --force: enviá la salida de la terminal.

@@ -1,0 +1,41 @@
+PROYECTO GASTOS — ETAPA 4: SUELDOS, INGRESOS ADICIONALES Y BALANCE MENSUAL
+
+QUÉ INCORPORA ESTA ENTREGA
+- Pantalla de espera inicial: el formulario de acceso no aparece hasta que Firebase resuelve el estado de autenticación. Evita el destello del login al recargar con F5 cuando ya hay una sesión activa.
+- Indicadores de carga animados para inicio/cierre de sesión, carga/edición/eliminación de gastos, sueldos, ingresos adicionales, observaciones y consultas mensuales.
+- Selector de mes de gestión compartido por el balance, los sueldos, los ingresos adicionales y la lista de movimientos.
+- Carga individual de los sueldos de Mauri y Ro. Cada formulario desaparece al guardar el importe correspondiente; cuando ambos están registrados, el panel de carga se contrae.
+- Corrección de sueldos mediante un control de edición discreto y confirmación antes de guardar cambios.
+- Saldo inicial como suma de ambos sueldos. Los importes individuales solamente se revelan al pasar el cursor por el saldo inicial en computadora o al tocarlo en celular.
+- Registro de múltiples ingresos adicionales, con monto y procedencia. Cada ingreso se puede editar y eliminar con confirmación.
+- Balance actualizado automáticamente con los cambios recibidos desde Firestore.
+- Saldo negativo resaltado en rojo.
+- Un único campo de observación mensual, disponible con saldo positivo, cero o negativo.
+- Todo sigue siendo compartido entre Mauri y Ro. Los gastos pueden registrarse aunque falte uno o ambos sueldos.
+- Los meses anteriores también permiten completar/corregir sueldos, agregar ingresos y modificar observaciones.
+
+ARCHIVOS
+- Se actualizan index.html, src/main.js y src/estilos.css.
+- Se reutilizan los servicios de meses e ingresos adicionales que ya están en el proyecto desde etapas anteriores.
+- Se agrega tests/pruebas-etapa-4.mjs y documentacion/ETAPA_4_PRUEBAS.md.
+- No cambia firestore.rules: se utilizan las reglas de la etapa anterior que ya publicaste.
+
+INSTALACIÓN
+1. Detené Vite con Ctrl+C.
+2. Hacé una copia de seguridad de la carpeta actual.
+3. Extraé el contenido de este ZIP directamente en la raíz del proyecto, donde está package.json.
+4. Permití reemplazar index.html, src/main.js y src/estilos.css.
+5. Conservá package.json, package-lock.json, node_modules y .env.
+6. No vuelvas a instalar Firebase ni cambies las reglas de Firestore.
+
+PRUEBAS
+1. Ejecutá: node tests/pruebas-logica.mjs
+2. Ejecutá: node tests/pruebas-etapa-4.mjs
+3. Ejecutá: npm run dev
+4. Iniciá sesión y seguí documentacion/ETAPA_4_PRUEBAS.md.
+
+NOTAS
+- Los sueldos pendientes se cuentan como cero en el balance provisional, pero la interfaz indica cuáles faltan. Nunca bloquean la carga de gastos.
+- La fecha del gasto sigue determinando el mes al que pertenece. El selector «Mes de gestión» permite administrar sueldos, ingresos adicionales y observación del mes seleccionado; no altera la fecha automática de una carga nueva, que sigue siendo la fecha actual.
+- Los saldos sobrantes no se trasladan automáticamente al mes siguiente. Para incorporarlos, se registra manualmente un ingreso adicional.
+- Esta etapa todavía no incorpora dashboard separado, filtros avanzados ni gráficos. Se desarrollarán después de verificar sueldos, ingresos y balance.

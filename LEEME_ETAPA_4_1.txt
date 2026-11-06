@@ -1,0 +1,22 @@
+PROYECTO GASTOS — ETAPA 4.1: NOTIFICACIONES Y DIÁLOGOS
+
+CAMBIOS DE ESTA ENTREGA
+- Se elimina el banner fijo de estado de operaciones y el mensaje «Listo. 9 categorías y 3 medios de pago disponibles».
+- Las confirmaciones de éxito, error y aviso aparecen como notificaciones emergentes temporales.
+- Las operaciones en curso pueden mostrar una notificación con spinner; los botones conservan su indicador de carga.
+- Las confirmaciones para editar/eliminar dejan de usar el cuadro nativo del navegador. Se muestra un diálogo de la aplicación, con fondo desenfocado, botones propios y opción de cancelar con Escape o tocando fuera.
+- Se conserva la pantalla de espera inicial de autenticación.
+
+INSTALACIÓN
+1. Detené Vite con Ctrl+C.
+2. Hacé una copia de seguridad de la carpeta actual.
+3. Extraé el ZIP directamente en la raíz de tu proyecto Vite.
+4. Permití reemplazar index.html, src/main.js y src/estilos.css.
+5. Conservá package.json, package-lock.json, node_modules y .env.
+6. No hace falta modificar ni volver a publicar las reglas de Firestore.
+7. Ejecutá npm run dev.
+
+PRUEBAS
+- Revisá documentacion/ETAPA_4_1_EXPERIENCIA.md.
+- Ejecutá node tests/pruebas-logica.mjs, node tests/pruebas-etapa-4.mjs y node tests/pruebas-interfaz-etapa-4-1.mjs.
+- Probá guardar, editar y eliminar un gasto, un sueldo y un ingreso adicional.

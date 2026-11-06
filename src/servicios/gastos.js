@@ -145,3 +145,20 @@ export async function obtenerTodosLosGastos() {
   const resultado = await getDocs(query(collection(db, COLECCION_GASTOS), orderBy('fecha', 'desc')));
   return resultado.docs.map((documento) => ({ id: documento.id, ...documento.data() }));
 }
+
+/** Observa los gastos comprendidos entre dos fechas ISO, con límite final exclusivo. */
+export function observarGastosEnRango(desde, hastaSinIncluir, callback, alError) {
+  asegurarBaseDeDatos();
+  const fechaDesde = validarFechaISO(desde);
+  const fechaHasta = validarFechaISO(hastaSinIncluir);
+  if (fechaDesde >= fechaHasta) throw new Error('El rango de fechas del gráfico no es válido.');
+  const consulta = query(
+    collection(db, COLECCION_GASTOS),
+    where('fecha', '>=', fechaDesde),
+    where('fecha', '<', fechaHasta),
+    orderBy('fecha', 'desc'),
+  );
+  return onSnapshot(consulta, (resultado) => {
+    callback(resultado.docs.map((documento) => ({ id: documento.id, ...documento.data() })));
+  }, alError);
+}
