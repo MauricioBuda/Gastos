@@ -47,7 +47,12 @@ const elementos = {
   panelConfiguracion: document.querySelector('#panel-configuracion'),
   panelAplicacion: document.querySelector('#panel-aplicacion'),
   estadoAplicacion: document.querySelector('#estado-aplicacion'),
-  estadoOperacion: document.querySelector('#estado-operacion'),
+  contenedorNotificaciones: document.querySelector('#contenedor-notificaciones'),
+  dialogoConfirmacion: document.querySelector('#dialogo-confirmacion'),
+  tituloDialogoConfirmacion: document.querySelector('#titulo-dialogo-confirmacion'),
+  mensajeDialogoConfirmacion: document.querySelector('#mensaje-dialogo-confirmacion'),
+  botonCancelarConfirmacion: document.querySelector('#boton-cancelar-confirmacion'),
+  botonAceptarConfirmacion: document.querySelector('#boton-aceptar-confirmacion'),
   botonIniciarSesion: document.querySelector('#boton-iniciar-sesion'),
   botonCerrarSesion: document.querySelector('#boton-cerrar-sesion'),
   encabezadoUsuario: document.querySelector('#encabezado-usuario'),
@@ -131,6 +136,8 @@ let uidInicializando = null;
 let uidAplicacionLista = null;
 let periodoSueldosInicializado = null;
 const edicionesSueldos = { mauri: false, ro: false };
+let resolverConfirmacionPendiente = null;
+let temporizadorNotificacion = null;
 
 function crearMesVacio(periodo) {
   return {
@@ -162,16 +169,87 @@ function mostrarEstadoAplicacion(mensaje, tipo = 'normal') {
 }
 
 function mostrarEstadoOperacion(mensaje, tipo = 'normal') {
-  elementos.estadoOperacion.replaceChildren();
-  elementos.estadoOperacion.dataset.tipo = tipo;
-  elementos.estadoOperacion.hidden = !mensaje;
+  if (temporizadorNotificacion) {
+    clearTimeout(temporizadorNotificacion);
+    temporizadorNotificacion = null;
+  }
+  elementos.contenedorNotificaciones.replaceChildren();
   if (!mensaje) return;
 
+  const notificacion = document.createElement('div');
+  notificacion.className = 'notificacion';
+  notificacion.dataset.tipo = tipo;
+  notificacion.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
+
+  const icono = document.createElement('span');
+  icono.className = 'notificacion__icono';
+  icono.setAttribute('aria-hidden', 'true');
   if (tipo === 'cargando') {
-    elementos.estadoOperacion.append(crearIndicadorCarga(), document.createTextNode(mensaje));
+    icono.append(crearIndicadorCarga());
   } else {
-    elementos.estadoOperacion.textContent = mensaje;
+    icono.textContent = tipo === 'correcto' ? '✓' : tipo === 'error' ? '×' : tipo === 'aviso' ? '!' : 'i';
   }
+
+  const texto = document.createElement('span');
+  texto.className = 'notificacion__mensaje';
+  texto.textContent = mensaje;
+
+  const cerrar = document.createElement('button');
+  cerrar.className = 'notificacion__cerrar';
+  cerrar.type = 'button';
+  cerrar.setAttribute('aria-label', 'Cerrar notificación');
+  cerrar.textContent = '×';
+  cerrar.addEventListener('click', retirarNotificacion);
+
+  notificacion.append(icono, texto, cerrar);
+  elementos.contenedorNotificaciones.append(notificacion);
+
+  if (tipo !== 'cargando') {
+    const duracion = tipo === 'error' ? 6500 : tipo === 'aviso' ? 5000 : 3800;
+    temporizadorNotificacion = setTimeout(retirarNotificacion, duracion);
+  }
+}
+
+function retirarNotificacion() {
+  if (temporizadorNotificacion) {
+    clearTimeout(temporizadorNotificacion);
+    temporizadorNotificacion = null;
+  }
+  const notificacion = elementos.contenedorNotificaciones.firstElementChild;
+  if (!notificacion) return;
+  notificacion.classList.add('notificacion--salida');
+  notificacion.addEventListener('animationend', () => notificacion.remove(), { once: true });
+  // Respaldo para entornos que no disparan animationend (por ejemplo, movimiento reducido).
+  setTimeout(() => notificacion.remove(), 220);
+}
+
+function solicitarConfirmacion({
+  titulo = '¿Confirmás esta acción?',
+  mensaje = 'Revisá los datos antes de continuar.',
+  textoConfirmar = 'Confirmar',
+  textoCancelar = 'Cancelar',
+  destructiva = false,
+} = {}) {
+  if (elementos.dialogoConfirmacion.open) return Promise.resolve(false);
+
+  elementos.tituloDialogoConfirmacion.textContent = titulo;
+  elementos.mensajeDialogoConfirmacion.textContent = mensaje;
+  elementos.botonAceptarConfirmacion.textContent = textoConfirmar;
+  elementos.botonCancelarConfirmacion.textContent = textoCancelar;
+  elementos.botonAceptarConfirmacion.classList.toggle('boton-confirmacion--destructivo', destructiva);
+
+  return new Promise((resolver) => {
+    resolverConfirmacionPendiente = resolver;
+    elementos.dialogoConfirmacion.showModal();
+    requestAnimationFrame(() => elementos.botonCancelarConfirmacion.focus());
+  });
+}
+
+function cerrarDialogoConfirmacion(resultado) {
+  const resolver = resolverConfirmacionPendiente;
+  resolverConfirmacionPendiente = null;
+  if (elementos.dialogoConfirmacion.open) elementos.dialogoConfirmacion.close();
+  resolver?.(resultado);
 }
 
 function crearIndicadorCarga() {
@@ -289,16 +367,14 @@ async function iniciarAplicacionPrivada(usuario) {
   mostrarEstadoOperacion('Preparando los catálogos…', 'cargando');
 
   try {
-    const resultado = await inicializarCatalogosBase();
+    await inicializarCatalogosBase();
     if (auth?.currentUser?.uid !== usuario.uid) return;
 
     iniciarObservadoresCatalogos();
     cambiarPeriodoConsultado(periodoSeleccionado);
     uidAplicacionLista = usuario.uid;
-    mostrarEstadoOperacion(
-      `Listo. ${resultado.categorias} categorías y ${resultado.mediosPago} medios de pago disponibles.`,
-      'correcto',
-    );
+    // La preparación de catálogos no requiere un aviso permanente en pantalla.
+    mostrarEstadoOperacion('');
   } catch (error) {
     console.error('No se pudo preparar la aplicación:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
@@ -462,7 +538,11 @@ async function guardarSueldoDesdeFormulario(evento) {
   const periodoOperacion = periodoSeleccionado;
   if (!formulario.reportValidity()) return;
 
-  if (esEdicion && !window.confirm(`¿Confirmás corregir el sueldo de ${nombre} para ${formatearPeriodo(periodoOperacion)}?`)) return;
+  if (esEdicion && !(await solicitarConfirmacion({
+    titulo: 'Corregir sueldo',
+    mensaje: `¿Confirmás corregir el sueldo de ${nombre} para ${formatearPeriodo(periodoOperacion)}?`,
+    textoConfirmar: 'Guardar cambios',
+  }))) return;
 
   const boton = formulario.querySelector('button[type="submit"]');
   const finalizarCarga = activarCargaBoton(boton, 'Guardando…');
@@ -544,7 +624,11 @@ function abrirEdicionIngreso(ingreso) {
 async function guardarIngresoEditado(evento) {
   evento.preventDefault();
   if (!ingresoEnEdicion?.id || !elementos.formularioEditarIngreso.reportValidity()) return;
-  if (!window.confirm('¿Confirmás guardar los cambios de este ingreso adicional?')) return;
+  if (!(await solicitarConfirmacion({
+    titulo: 'Guardar cambios del ingreso',
+    mensaje: '¿Confirmás guardar los cambios de este ingreso adicional?',
+    textoConfirmar: 'Guardar cambios',
+  }))) return;
   const edicionActual = { ...ingresoEnEdicion };
 
   const finalizarCarga = activarCargaBoton(elementos.botonGuardarIngresoEditado, 'Guardando…');
@@ -566,7 +650,12 @@ async function guardarIngresoEditado(evento) {
 }
 
 async function confirmarEliminacionIngreso(ingreso, boton) {
-  if (!window.confirm(`¿Querés eliminar el ingreso “${ingreso.procedencia}” por ${formatearMoneda(ingreso.monto)}?`)) return;
+  if (!(await solicitarConfirmacion({
+    titulo: 'Eliminar ingreso adicional',
+    mensaje: `¿Querés eliminar el ingreso “${ingreso.procedencia}” por ${formatearMoneda(ingreso.monto)}? Esta acción no se puede deshacer.`,
+    textoConfirmar: 'Eliminar ingreso',
+    destructiva: true,
+  }))) return;
   const periodoOperacion = periodoSeleccionado;
   const finalizarCarga = activarCargaBoton(boton, '');
   mostrarEstadoOperacion('Eliminando el ingreso adicional…', 'cargando');
@@ -626,7 +715,11 @@ async function guardarObservacionDesdeFormulario(evento) {
     elementos.formularioObservacionSaldo.hidden = true;
     return;
   }
-  if (observacionAnterior && !window.confirm('¿Confirmás modificar la observación del saldo de este mes?')) return;
+  if (observacionAnterior && !(await solicitarConfirmacion({
+    titulo: 'Modificar observación',
+    mensaje: '¿Confirmás modificar la observación del saldo de este mes?',
+    textoConfirmar: 'Guardar cambios',
+  }))) return;
 
   const finalizarCarga = activarCargaBoton(elementos.botonGuardarObservacion, 'Guardando…');
   mostrarEstadoOperacion('Guardando la observación del mes…', 'cargando');
@@ -912,7 +1005,11 @@ async function guardarGastoDesdeFormulario(evento) {
     mostrarEstadoOperacion('Seleccioná una categoría y un medio de pago.', 'error');
     return;
   }
-  if (estaEditando && !window.confirm('¿Confirmás guardar los cambios de este gasto?')) return;
+  if (estaEditando && !(await solicitarConfirmacion({
+    titulo: 'Guardar cambios del gasto',
+    mensaje: '¿Confirmás guardar las modificaciones de este gasto?',
+    textoConfirmar: 'Guardar cambios',
+  }))) return;
 
   const finalizarCarga = activarCargaBoton(elementos.botonGuardarGasto, estaEditando ? 'Guardando cambios…' : 'Guardando…');
   mostrarEstadoOperacion(estaEditando ? 'Actualizando el gasto…' : 'Guardando el gasto…', 'cargando');
@@ -964,7 +1061,12 @@ function comenzarEdicion(gasto) {
 
 async function confirmarEliminacion(gasto, boton) {
   const categoria = categorias.find((item) => item.id === gasto.categoriaId)?.nombre || 'este gasto';
-  if (!window.confirm(`¿Querés eliminar el gasto “${categoria}” por ${formatearMoneda(gasto.monto)}? Esta acción no se puede deshacer.`)) return;
+  if (!(await solicitarConfirmacion({
+    titulo: 'Eliminar gasto',
+    mensaje: `¿Querés eliminar el gasto “${categoria}” por ${formatearMoneda(gasto.monto)}? Esta acción no se puede deshacer.`,
+    textoConfirmar: 'Eliminar gasto',
+    destructiva: true,
+  }))) return;
 
   const finalizarCarga = activarCargaBoton(boton, '');
   mostrarEstadoOperacion('Eliminando el gasto…', 'cargando');
@@ -1052,6 +1154,19 @@ if (!firebaseConfigurado) {
     elementos.panelInicioSesion.hidden = false;
   });
 }
+
+elementos.botonCancelarConfirmacion?.addEventListener('click', () => cerrarDialogoConfirmacion(false));
+elementos.botonAceptarConfirmacion?.addEventListener('click', () => cerrarDialogoConfirmacion(true));
+elementos.dialogoConfirmacion?.addEventListener('close', () => {
+  if (resolverConfirmacionPendiente) {
+    const resolver = resolverConfirmacionPendiente;
+    resolverConfirmacionPendiente = null;
+    resolver(false);
+  }
+});
+elementos.dialogoConfirmacion?.addEventListener('click', (evento) => {
+  if (evento.target === elementos.dialogoConfirmacion) cerrarDialogoConfirmacion(false);
+});
 
 elementos.botonIniciarSesion?.addEventListener('click', async () => {
   const finalizarCarga = activarCargaBoton(elementos.botonIniciarSesion, 'Conectando…');

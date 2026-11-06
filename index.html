@@ -74,8 +74,6 @@
             </button>
           </nav>
 
-          <div class="estado-operacion" id="estado-operacion" role="status" aria-live="polite" hidden></div>
-
           <section class="panel-resumen-mensual" id="panel-resumen-mensual" aria-labelledby="titulo-resumen-mensual">
             <div class="encabezado-resumen-mensual">
               <div>
@@ -282,7 +280,24 @@
           </div>
         </form>
       </dialog>
+
+      <dialog class="dialogo-confirmacion" id="dialogo-confirmacion" aria-labelledby="titulo-dialogo-confirmacion" aria-describedby="mensaje-dialogo-confirmacion">
+        <div class="contenido-dialogo-confirmacion">
+          <span class="dialogo-confirmacion__icono" aria-hidden="true">?</span>
+          <div class="dialogo-confirmacion__texto">
+            <span class="etiqueta-superior">CONFIRMAR ACCIÓN</span>
+            <h2 id="titulo-dialogo-confirmacion">¿Confirmás esta acción?</h2>
+            <p id="mensaje-dialogo-confirmacion">Revisá los datos antes de continuar.</p>
+          </div>
+          <div class="acciones-dialogo-confirmacion">
+            <button class="boton-secundario" id="boton-cancelar-confirmacion" type="button">Cancelar</button>
+            <button class="boton-principal" id="boton-aceptar-confirmacion" type="button">Confirmar</button>
+          </div>
+        </div>
+      </dialog>
     </div>
+
+    <div class="contenedor-notificaciones" id="contenedor-notificaciones" role="region" aria-label="Notificaciones" aria-live="polite" aria-relevant="additions text"></div>
 
     <script type="module" src="/src/main.js"></script>
   </body>
