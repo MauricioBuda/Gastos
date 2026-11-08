@@ -8,15 +8,11 @@ import {
 import {
   inicializarCatalogosBase,
   observarCategorias,
-  observarMediosPago,
   crearOReactivarCategoria,
-  crearOReactivarMedioPago,
   editarCategoria,
   eliminarCategoria,
-  editarMedioPago,
-  eliminarMedioPago,
+  actualizarVisibilidadCategoria,
   obtenerCategorias,
-  obtenerMediosPago,
 } from './servicios/catalogos.js';
 import {
   crearGasto,
@@ -71,10 +67,6 @@ const elementos = {
   botonAdministrarCatalogos: document.querySelector('#boton-administrar-catalogos'),
   dialogoAdministracionCatalogos: document.querySelector('#dialogo-administracion-catalogos'),
   botonCerrarAdministracion: document.querySelector('#boton-cerrar-administracion'),
-  botonAdminCategorias: document.querySelector('#boton-admin-categorias'),
-  botonAdminMedios: document.querySelector('#boton-admin-medios'),
-  panelAdminCategorias: document.querySelector('#panel-admin-categorias'),
-  panelAdminMedios: document.querySelector('#panel-admin-medios'),
   formularioNuevaCategoria: document.querySelector('#formulario-nueva-categoria'),
   nombreNuevaCategoria: document.querySelector('#nombre-nueva-categoria'),
   botonGuardarNuevaCategoria: document.querySelector('#boton-guardar-nueva-categoria'),
@@ -82,13 +74,6 @@ const elementos = {
   listaCategoriasInactivas: document.querySelector('#lista-categorias-inactivas'),
   cantidadCategoriasActivas: document.querySelector('#cantidad-categorias-activas'),
   cantidadCategoriasInactivas: document.querySelector('#cantidad-categorias-inactivas'),
-  formularioNuevoMedio: document.querySelector('#formulario-nuevo-medio'),
-  nombreNuevoMedio: document.querySelector('#nombre-nuevo-medio'),
-  botonGuardarNuevoMedio: document.querySelector('#boton-guardar-nuevo-medio'),
-  listaMediosActivos: document.querySelector('#lista-medios-activos'),
-  listaMediosInactivos: document.querySelector('#lista-medios-inactivos'),
-  cantidadMediosActivos: document.querySelector('#cantidad-medios-activos'),
-  cantidadMediosInactivos: document.querySelector('#cantidad-medios-inactivos'),
   encabezadoUsuario: document.querySelector('#encabezado-usuario'),
   correoEncabezado: document.querySelector('#correo-encabezado'),
   leyendaEncabezado: document.querySelector('#leyenda-encabezado'),
@@ -104,6 +89,7 @@ const elementos = {
   detalleSueldos: document.querySelector('#detalle-sueldos'),
   detalleSueldoMauri: document.querySelector('#detalle-sueldo-mauri'),
   detalleSueldoRo: document.querySelector('#detalle-sueldo-ro'),
+  tarjetaIngresosAdicionales: document.querySelector('#tarjeta-ingresos-adicionales'),
   totalIngresosAdicionales: document.querySelector('#total-ingresos-adicionales'),
   cantidadIngresosAdicionales: document.querySelector('#cantidad-ingresos-adicionales'),
   totalGastosMes: document.querySelector('#total-gastos-mes'),
@@ -135,9 +121,6 @@ const elementos = {
   categoriaGasto: document.querySelector('#categoria-gasto'),
   categoriaPersonalizada: document.querySelector('#categoria-personalizada'),
   contenedorCategoriaPersonalizada: document.querySelector('#contenedor-categoria-personalizada'),
-  medioPagoGasto: document.querySelector('#medio-pago-gasto'),
-  medioPersonalizado: document.querySelector('#medio-personalizado'),
-  contenedorMedioPersonalizado: document.querySelector('#contenedor-medio-personalizado'),
   responsableGasto: document.querySelector('#responsable-gasto'),
   fechaGasto: document.querySelector('#fecha-gasto'),
   botonGuardarGasto: document.querySelector('#boton-guardar-gasto'),
@@ -153,7 +136,6 @@ const elementos = {
   botonSubvistaGraficos: document.querySelector('#boton-subvista-graficos'),
   filtroCategoria: document.querySelector('#filtro-categoria'),
   filtroPersona: document.querySelector('#filtro-persona'),
-  filtroMedioPago: document.querySelector('#filtro-medio-pago'),
   filtroMontoMinimo: document.querySelector('#filtro-monto-minimo'),
   filtroMontoMaximo: document.querySelector('#filtro-monto-maximo'),
   filtroFechaDesde: document.querySelector('#filtro-fecha-desde'),
@@ -175,7 +157,6 @@ const elementos = {
 
 let usuarioActivo = null;
 let categorias = [];
-let mediosPago = [];
 let gastosMes = [];
 let ingresosAdicionales = [];
 let mesSeleccionado = crearMesVacio(obtenerPeriodoDeFecha(obtenerFechaLocalActual()));
@@ -186,7 +167,6 @@ let gastoEnEdicion = null;
 let ingresoEnEdicion = null;
 let periodoSeleccionado = obtenerPeriodoDeFecha(obtenerFechaLocalActual());
 let cancelarObservadorCategorias = null;
-let cancelarObservadorMedios = null;
 let cancelarObservadorGastos = null;
 let cancelarObservadorMes = null;
 let cancelarObservadorIngresos = null;
@@ -210,7 +190,6 @@ let gastoRangoGraficoCargado = false;
 let periodosMesGraficoCargados = new Set();
 let periodosIngresosGraficoCargados = new Set();
 let versionSuscripcionGrafico = 0;
-let vistaCatalogoAdministracion = 'categorias';
 let catalogoEnEdicion = null;
 
 function crearMesVacio(periodo) {
@@ -247,8 +226,12 @@ function mostrarEstadoOperacion(mensaje, tipo = 'normal') {
     clearTimeout(temporizadorNotificacion);
     temporizadorNotificacion = null;
   }
-  elementos.contenedorNotificaciones.replaceChildren();
-  if (!mensaje) return;
+  const contenedor = elementos.contenedorNotificaciones;
+  contenedor.replaceChildren();
+  if (!mensaje) {
+    if (contenedor.open) contenedor.close();
+    return;
+  }
 
   const notificacion = document.createElement('div');
   notificacion.className = 'notificacion';
@@ -276,12 +259,12 @@ function mostrarEstadoOperacion(mensaje, tipo = 'normal') {
   cerrar.addEventListener('click', retirarNotificacion);
 
   notificacion.append(icono, texto, cerrar);
-  elementos.contenedorNotificaciones.append(notificacion);
+  contenedor.append(notificacion);
+  if (!contenedor.open) contenedor.showModal();
 
-  if (tipo !== 'cargando') {
-    const duracion = tipo === 'error' ? 6500 : tipo === 'aviso' ? 5000 : 3800;
-    temporizadorNotificacion = setTimeout(retirarNotificacion, duracion);
-  }
+  // Los avisos de resultado permanecen exactamente tres segundos en el centro.
+  // Los estados de carga continúan visibles hasta que finaliza la operación.
+  if (tipo !== 'cargando') temporizadorNotificacion = setTimeout(retirarNotificacion, 3000);
 }
 
 function retirarNotificacion() {
@@ -289,12 +272,19 @@ function retirarNotificacion() {
     clearTimeout(temporizadorNotificacion);
     temporizadorNotificacion = null;
   }
-  const notificacion = elementos.contenedorNotificaciones.firstElementChild;
-  if (!notificacion) return;
+  const contenedor = elementos.contenedorNotificaciones;
+  const notificacion = contenedor.firstElementChild;
+  if (!notificacion) {
+    if (contenedor.open) contenedor.close();
+    return;
+  }
   notificacion.classList.add('notificacion--salida');
-  notificacion.addEventListener('animationend', () => notificacion.remove(), { once: true });
-  // Respaldo para entornos que no disparan animationend (por ejemplo, movimiento reducido).
-  setTimeout(() => notificacion.remove(), 220);
+  const finalizar = () => {
+    if (notificacion.isConnected) notificacion.remove();
+    if (!contenedor.firstElementChild && contenedor.open) contenedor.close();
+  };
+  notificacion.addEventListener('animationend', finalizar, { once: true });
+  setTimeout(finalizar, 220);
 }
 
 function solicitarConfirmacion({
@@ -355,12 +345,10 @@ function activarCargaBoton(boton, mensaje) {
 function detenerObservadores() {
   detenerObservadoresGraficoMensual();
   cancelarObservadorCategorias?.();
-  cancelarObservadorMedios?.();
   cancelarObservadorGastos?.();
   cancelarObservadorMes?.();
   cancelarObservadorIngresos?.();
   cancelarObservadorCategorias = null;
-  cancelarObservadorMedios = null;
   cancelarObservadorGastos = null;
   cancelarObservadorMes = null;
   cancelarObservadorIngresos = null;
@@ -370,7 +358,6 @@ function mostrarPantallaAcceso() {
   detenerObservadores();
   usuarioActivo = null;
   categorias = [];
-  mediosPago = [];
   gastosMes = [];
   ingresosAdicionales = [];
   mesSeleccionado = crearMesVacio(periodoSeleccionado);
@@ -531,7 +518,6 @@ async function iniciarAplicacionPrivada(usuario) {
 
 function iniciarObservadoresCatalogos() {
   cancelarObservadorCategorias?.();
-  cancelarObservadorMedios?.();
 
   cancelarObservadorCategorias = observarCategorias((resultado) => {
     categorias = resultado;
@@ -544,115 +530,126 @@ function iniciarObservadoresCatalogos() {
     console.error('Error al consultar categorías:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
   }, { incluirInactivas: true });
-
-  cancelarObservadorMedios = observarMediosPago((resultado) => {
-    mediosPago = resultado;
-    actualizarSelectorMedios();
-    actualizarOpcionesFiltros();
-    renderizarGastos();
-    if (tipoGraficoActivo && tipoGraficoActivo !== 'mensual') renderizarGraficoActivo();
-    if (elementos.dialogoAdministracionCatalogos.open) renderizarAdministracionCatalogos();
-  }, (error) => {
-    console.error('Error al consultar medios de pago:', error);
-    mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
-  }, { incluirInactivos: true });
 }
 
 async function abrirAdministracionCatalogos() {
   if (elementos.dialogoAdministracionCatalogos.open) return;
   const finalizarCarga = activarCargaBoton(elementos.botonAdministrarCatalogos, 'Cargando…');
-  mostrarEstadoOperacion('Consultando categorías y medios de pago…', 'cargando');
+  mostrarEstadoOperacion('Consultando categorías…', 'cargando');
   try {
-    const [categoriasActualizadas, mediosActualizados] = await Promise.all([
-      obtenerCategorias({ incluirInactivas: true }),
-      obtenerMediosPago({ incluirInactivos: true }),
-    ]);
-    categorias = categoriasActualizadas;
-    mediosPago = mediosActualizados;
+    categorias = await obtenerCategorias({ incluirInactivas: true });
     actualizarSelectorCategorias();
-    actualizarSelectorMedios();
     actualizarOpcionesFiltros();
     catalogoEnEdicion = null;
-    cambiarVistaAdministracionCatalogos('categorias');
     renderizarAdministracionCatalogos();
     elementos.dialogoAdministracionCatalogos.showModal();
     mostrarEstadoOperacion('');
-    requestAnimationFrame(() => elementos.botonAdminCategorias.focus());
+    requestAnimationFrame(() => elementos.botonCerrarAdministracion.focus());
   } catch (error) {
-    console.error('No se pudieron consultar los catálogos para administrarlos:', error);
+    console.error('No se pudieron consultar las categorías para administrarlas:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
   } finally {
     finalizarCarga();
   }
 }
 
-function cambiarVistaAdministracionCatalogos(vista) {
-  vistaCatalogoAdministracion = vista === 'medios' ? 'medios' : 'categorias';
-  const verCategorias = vistaCatalogoAdministracion === 'categorias';
-  elementos.panelAdminCategorias.hidden = !verCategorias;
-  elementos.panelAdminMedios.hidden = verCategorias;
-  elementos.botonAdminCategorias.classList.toggle('pestana-catalogo--activa', verCategorias);
-  elementos.botonAdminMedios.classList.toggle('pestana-catalogo--activa', !verCategorias);
-  elementos.botonAdminCategorias.setAttribute('aria-pressed', String(verCategorias));
-  elementos.botonAdminMedios.setAttribute('aria-pressed', String(!verCategorias));
-}
-
 function renderizarAdministracionCatalogos() {
   if (!elementos.listaCategoriasActivas) return;
-  renderizarListaAdministracionCatalogo('categoria', categorias);
-  renderizarListaAdministracionCatalogo('medio', mediosPago);
+  renderizarListaAdministracionCatalogo(categorias);
 }
 
-function renderizarListaAdministracionCatalogo(tipo, catalogo) {
-  const esCategoria = tipo === 'categoria';
-  const idContenedorActivos = esCategoria ? 'lista-categorias-activas' : 'lista-medios-activos';
-  const idContenedorInactivos = esCategoria ? 'lista-categorias-inactivas' : 'lista-medios-inactivos';
-  const idContadorActivos = esCategoria ? 'cantidad-categorias-activas' : 'cantidad-medios-activos';
-  const idContadorInactivos = esCategoria ? 'cantidad-categorias-inactivas' : 'cantidad-medios-inactivos';
-
-  // Buscar directamente los elementos del DOM evita depender de referencias
-  // cacheadas que pueden quedar desfasadas si se mezclaron archivos de versiones.
-  const contenedorActivos = document.getElementById(idContenedorActivos);
-  const contenedorInactivos = document.getElementById(idContenedorInactivos);
-  const contadorActivos = document.getElementById(idContadorActivos);
-  const contadorInactivos = document.getElementById(idContadorInactivos);
+function renderizarListaAdministracionCatalogo(catalogo) {
+  const contenedorActivos = document.getElementById('lista-categorias-activas');
+  const contenedorInactivos = document.getElementById('lista-categorias-inactivas');
+  const contadorActivos = document.getElementById('cantidad-categorias-activas');
+  const contadorInactivos = document.getElementById('cantidad-categorias-inactivas');
 
   if (!contenedorActivos || !contenedorInactivos) {
-    throw new Error(`Falta la estructura HTML para administrar ${esCategoria ? 'categorías' : 'medios de pago'}. Revisá que index.html corresponda a esta versión.`);
+    throw new Error('Falta la estructura HTML para administrar categorías. Revisá que index.html corresponda a esta versión.');
   }
 
-  const activos = catalogo.filter((item) => item.activo);
-  const inactivos = catalogo.filter((item) => !item.activo);
-
-  // Los contadores son informativos; su ausencia no debe bloquear el diálogo.
+  const comparar = (a, b) => {
+    if (a.id === 'otros') return 1;
+    if (b.id === 'otros') return -1;
+    return (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre, 'es-AR');
+  };
+  const activos = catalogo.filter((item) => item.activo).sort(comparar);
+  const inactivos = catalogo.filter((item) => !item.activo).sort(comparar);
   if (contadorActivos) contadorActivos.textContent = String(activos.length);
   if (contadorInactivos) contadorInactivos.textContent = String(inactivos.length);
   contenedorActivos.replaceChildren();
   contenedorInactivos.replaceChildren();
 
-  if (activos.length) {
-    activos.forEach((item) => contenedorActivos.append(crearFilaAdministracionCatalogo(item, tipo, false)));
-  } else {
-    contenedorActivos.append(crearMensajeVacio('No hay opciones activas.'));
-  }
+  if (activos.length) activos.forEach((item) => contenedorActivos.append(crearFilaAdministracionCatalogo(item, false)));
+  else contenedorActivos.append(crearMensajeVacio('No hay categorías activas.'));
 
-  if (inactivos.length) {
-    inactivos.forEach((item) => contenedorInactivos.append(crearFilaAdministracionCatalogo(item, tipo, true)));
+  if (inactivos.length) inactivos.forEach((item) => contenedorInactivos.append(crearFilaAdministracionCatalogo(item, true)));
+  else contenedorInactivos.append(crearMensajeVacio('No hay categorías eliminadas.'));
+}
+
+function crearIconoOjo(oculto) {
+  const espacioSVG = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(espacioSVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  svg.classList.add('icono-ojo-categoria');
+  const contorno = document.createElementNS(espacioSVG, 'path');
+  contorno.setAttribute('d', 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z');
+  contorno.setAttribute('fill', 'none');
+  contorno.setAttribute('stroke', 'currentColor');
+  contorno.setAttribute('stroke-width', '1.8');
+  contorno.setAttribute('stroke-linecap', 'round');
+  contorno.setAttribute('stroke-linejoin', 'round');
+  svg.append(contorno);
+  if (oculto) {
+    const linea = document.createElementNS(espacioSVG, 'path');
+    linea.setAttribute('d', 'M4 4 20 20');
+    linea.setAttribute('fill', 'none');
+    linea.setAttribute('stroke', 'currentColor');
+    linea.setAttribute('stroke-width', '2');
+    linea.setAttribute('stroke-linecap', 'round');
+    svg.append(linea);
   } else {
-    contenedorInactivos.append(crearMensajeVacio('No hay opciones eliminadas.'));
+    const pupila = document.createElementNS(espacioSVG, 'circle');
+    pupila.setAttribute('cx', '12');
+    pupila.setAttribute('cy', '12');
+    pupila.setAttribute('r', '3');
+    pupila.setAttribute('fill', 'none');
+    pupila.setAttribute('stroke', 'currentColor');
+    pupila.setAttribute('stroke-width', '1.8');
+    svg.append(pupila);
+  }
+  return svg;
+}
+
+async function cambiarVisibilidadCategoria(item, boton) {
+  const nuevaVisibilidad = item.visibleEnFormulario === false;
+  const finalizarCarga = activarCargaBoton(boton, '');
+  mostrarEstadoOperacion(nuevaVisibilidad ? 'Mostrando la categoría en el formulario…' : 'Ocultando la categoría del formulario…', 'cargando');
+  try {
+    await actualizarVisibilidadCategoria(item.id, nuevaVisibilidad);
+    mostrarEstadoOperacion(nuevaVisibilidad
+      ? `“${item.nombre}” ya aparece en el desplegable de gastos.`
+      : `“${item.nombre}” ya no aparece en el desplegable. Los gastos anteriores se conservaron.`, 'correcto');
+  } catch (error) {
+    console.error('No se pudo cambiar la visibilidad de la categoría:', error);
+    mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
+  } finally {
+    finalizarCarga();
   }
 }
 
-function crearFilaAdministracionCatalogo(item, tipo, estaInactivo) {
+function crearFilaAdministracionCatalogo(item, estaInactiva) {
   const fila = document.createElement('article');
   fila.className = 'fila-administracion-catalogo';
-  fila.dataset.tipoCatalogo = tipo;
+  fila.dataset.tipoCatalogo = 'categoria';
   fila.dataset.idCatalogo = item.id;
 
-  if (!estaInactivo && catalogoEnEdicion?.tipo === tipo && catalogoEnEdicion.id === item.id) {
+  if (!estaInactiva && catalogoEnEdicion?.id === item.id) {
     const formulario = document.createElement('form');
     formulario.className = 'formulario-edicion-catalogo';
-    formulario.dataset.formularioEditarCatalogo = tipo;
+    formulario.dataset.formularioEditarCatalogo = 'categoria';
     const campo = document.createElement('input');
     campo.type = 'text';
     campo.value = item.nombre;
@@ -677,7 +674,7 @@ function crearFilaAdministracionCatalogo(item, tipo, estaInactivo) {
     });
     acciones.append(guardar, cancelar);
     formulario.append(campo, acciones);
-    formulario.addEventListener('submit', (evento) => guardarEdicionCatalogo(evento, item, tipo, guardar));
+    formulario.addEventListener('submit', (evento) => guardarEdicionCatalogo(evento, item, guardar));
     fila.append(formulario);
     requestAnimationFrame(() => campo.focus());
     return fila;
@@ -687,10 +684,10 @@ function crearFilaAdministracionCatalogo(item, tipo, estaInactivo) {
   contenido.className = 'fila-administracion-catalogo__contenido';
   const nombre = document.createElement('strong');
   nombre.className = 'fila-administracion-catalogo__nombre';
-  nombre.textContent = item.nombre;
+  nombre.textContent = item.id === 'otros' ? 'Agregar otra categoría' : item.nombre;
   contenido.append(nombre);
 
-  if (estaInactivo) {
+  if (estaInactiva) {
     const etiqueta = document.createElement('span');
     etiqueta.className = 'etiqueta-catalogo etiqueta-catalogo--inactiva';
     etiqueta.textContent = 'Eliminada';
@@ -698,81 +695,94 @@ function crearFilaAdministracionCatalogo(item, tipo, estaInactivo) {
   } else if (item.protegida) {
     const etiqueta = document.createElement('span');
     etiqueta.className = 'etiqueta-catalogo';
-    etiqueta.textContent = 'Fija';
+    etiqueta.textContent = 'Siempre disponible';
+    contenido.append(etiqueta);
+  } else if (item.visibleEnFormulario === false) {
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 'etiqueta-catalogo etiqueta-catalogo--oculta';
+    etiqueta.textContent = 'Oculta del formulario';
     contenido.append(etiqueta);
   }
 
   const acciones = document.createElement('div');
   acciones.className = 'acciones-fila-catalogo';
-
-  if (estaInactivo) {
+  if (estaInactiva) {
     const restaurar = document.createElement('button');
     restaurar.type = 'button';
     restaurar.className = 'boton-secundario boton-restaurar-catalogo';
     restaurar.textContent = 'Restaurar';
-    restaurar.addEventListener('click', () => restaurarOpcionCatalogo(item, tipo, restaurar));
+    restaurar.addEventListener('click', () => restaurarCategoria(item, restaurar));
     acciones.append(restaurar);
-  } else if (!item.protegida) {
-    const editar = document.createElement('button');
-    editar.type = 'button';
-    editar.className = 'boton-icono boton-icono--editar';
-    editar.textContent = '✎';
-    editar.title = `Editar ${item.nombre}`;
-    editar.setAttribute('aria-label', `Editar ${item.nombre}`);
-    editar.addEventListener('click', () => {
-      catalogoEnEdicion = { tipo, id: item.id };
-      renderizarAdministracionCatalogos();
-      const filaActual = (tipo === 'categoria' ? elementos.listaCategoriasActivas : elementos.listaMediosActivos)
-        .querySelector(`[data-id-catalogo="${item.id}"] [data-campo-edicion-catalogo]`);
-      filaActual?.focus();
-    });
+  } else if (item.id !== 'otros') {
+    const visibilidad = document.createElement('button');
+    visibilidad.type = 'button';
+    const estaVisible = item.visibleEnFormulario !== false;
+    visibilidad.className = `boton-icono boton-visibilidad-categoria${estaVisible ? '' : ' boton-visibilidad-categoria--oculta'}`;
+    visibilidad.append(crearIconoOjo(!estaVisible));
+    visibilidad.title = estaVisible ? `Ocultar ${item.nombre} del formulario` : `Mostrar ${item.nombre} en el formulario`;
+    visibilidad.setAttribute('aria-label', visibilidad.title);
+    visibilidad.setAttribute('aria-pressed', String(estaVisible));
+    visibilidad.addEventListener('click', () => cambiarVisibilidadCategoria(item, visibilidad));
+    acciones.append(visibilidad);
 
-    const eliminar = document.createElement('button');
-    eliminar.type = 'button';
-    eliminar.className = 'boton-icono boton-icono--eliminar';
-    eliminar.textContent = '×';
-    eliminar.title = `Eliminar ${item.nombre}`;
-    eliminar.setAttribute('aria-label', `Eliminar ${item.nombre}`);
-    eliminar.addEventListener('click', () => eliminarOpcionCatalogo(item, tipo, eliminar));
-    acciones.append(editar, eliminar);
+    if (!item.protegida) {
+      const editar = document.createElement('button');
+      editar.type = 'button';
+      editar.className = 'boton-icono boton-icono--editar';
+      editar.textContent = '✎';
+      editar.title = `Editar ${item.nombre}`;
+      editar.setAttribute('aria-label', `Editar ${item.nombre}`);
+      editar.addEventListener('click', () => {
+        catalogoEnEdicion = { id: item.id };
+        renderizarAdministracionCatalogos();
+        const filaActual = elementos.listaCategoriasActivas.querySelector(`[data-id-catalogo="${item.id}"] [data-campo-edicion-catalogo]`);
+        filaActual?.focus();
+      });
+
+      const eliminar = document.createElement('button');
+      eliminar.type = 'button';
+      eliminar.className = 'boton-icono boton-icono--eliminar';
+      eliminar.textContent = '×';
+      eliminar.title = `Eliminar ${item.nombre}`;
+      eliminar.setAttribute('aria-label', `Eliminar ${item.nombre}`);
+      eliminar.addEventListener('click', () => eliminarCategoriaDesdeAdministracion(item, eliminar));
+      acciones.append(editar, eliminar);
+    }
   }
 
   fila.append(contenido, acciones);
-  if (estaInactivo) fila.classList.add('fila-administracion-catalogo--inactiva');
+  if (estaInactiva) fila.classList.add('fila-administracion-catalogo--inactiva');
   if (item.protegida) fila.classList.add('fila-administracion-catalogo--protegida');
   return fila;
 }
 
-async function guardarNuevaOpcionCatalogo(evento, tipo) {
+async function guardarNuevaOpcionCatalogo(evento) {
   evento.preventDefault();
-  const esCategoria = tipo === 'categoria';
-  const formulario = esCategoria ? elementos.formularioNuevaCategoria : elementos.formularioNuevoMedio;
-  const campo = esCategoria ? elementos.nombreNuevaCategoria : elementos.nombreNuevoMedio;
-  const boton = esCategoria ? elementos.botonGuardarNuevaCategoria : elementos.botonGuardarNuevoMedio;
+  const formulario = elementos.formularioNuevaCategoria;
+  const campo = elementos.nombreNuevaCategoria;
+  const boton = elementos.botonGuardarNuevaCategoria;
   if (!formulario.reportValidity()) return;
 
   const nombre = campo.value.trim();
   const finalizarCarga = activarCargaBoton(boton, 'Guardando…');
-  mostrarEstadoOperacion(esCategoria ? 'Guardando categoría…' : 'Guardando medio de pago…', 'cargando');
+  mostrarEstadoOperacion('Guardando categoría…', 'cargando');
   try {
-    const resultado = esCategoria
-      ? await crearOReactivarCategoria(nombre)
-      : await crearOReactivarMedioPago(nombre);
+    const resultado = await crearOReactivarCategoria(nombre);
     formulario.reset();
     catalogoEnEdicion = null;
     mostrarEstadoOperacion(resultado.reactivada
-      ? `${resultado.nombre} se recuperó y ya está disponible.`
-      : `${resultado.nombre} se agregó correctamente.`, 'correcto');
+      ? `${resultado.nombre} se recuperó. Revisá el ojo para decidir si aparece en el formulario.`
+      : `${resultado.nombre} se agregó. Activá el ojo si querés mostrarla al cargar gastos.`, 'correcto');
     renderizarAdministracionCatalogos();
   } catch (error) {
-    console.error('No se pudo agregar la opción del catálogo:', error);
+    console.error('No se pudo agregar la categoría:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
   } finally {
     finalizarCarga();
   }
 }
 
-async function guardarEdicionCatalogo(evento, item, tipo, boton) {
+async function guardarEdicionCatalogo(evento, item, boton) {
   evento.preventDefault();
   const formulario = evento.currentTarget;
   if (!formulario.reportValidity()) return;
@@ -790,9 +800,8 @@ async function guardarEdicionCatalogo(evento, item, tipo, boton) {
     return;
   }
 
-  const etiqueta = tipo === 'categoria' ? 'categoría' : 'medio de pago';
   const confirmado = await solicitarConfirmacion({
-    titulo: `Editar ${etiqueta}`,
+    titulo: 'Editar categoría',
     mensaje: `¿Querés cambiar “${item.nombre}” por “${nombreNuevo}”? El nuevo nombre también se mostrará en los movimientos anteriores.`,
     textoConfirmar: 'Guardar cambios',
   });
@@ -800,14 +809,13 @@ async function guardarEdicionCatalogo(evento, item, tipo, boton) {
 
   catalogoEnEdicion = null;
   const finalizarCarga = activarCargaBoton(boton, 'Guardando…');
-  mostrarEstadoOperacion(`Actualizando ${etiqueta}…`, 'cargando');
+  mostrarEstadoOperacion('Actualizando categoría…', 'cargando');
   try {
-    if (tipo === 'categoria') await editarCategoria(item.id, nombreNuevo);
-    else await editarMedioPago(item.id, nombreNuevo);
+    await editarCategoria(item.id, nombreNuevo);
     mostrarEstadoOperacion(`Se actualizó “${nombreNuevo}”. Los movimientos anteriores ya muestran el nuevo nombre.`, 'correcto');
     renderizarAdministracionCatalogos();
   } catch (error) {
-    console.error('No se pudo editar la opción del catálogo:', error);
+    console.error('No se pudo editar la categoría:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
     renderizarAdministracionCatalogos();
   } finally {
@@ -815,50 +823,45 @@ async function guardarEdicionCatalogo(evento, item, tipo, boton) {
   }
 }
 
-async function eliminarOpcionCatalogo(item, tipo, boton) {
-  const etiqueta = tipo === 'categoria' ? 'categoría' : 'medio de pago';
+async function eliminarCategoriaDesdeAdministracion(item, boton) {
   const confirmado = await solicitarConfirmacion({
-    titulo: `Eliminar ${etiqueta}`,
-    mensaje: `¿Querés quitar “${item.nombre}” de las opciones disponibles? Los movimientos anteriores conservarán esta opción y podrás recuperarla más adelante.`,
-    textoConfirmar: 'Eliminar opción',
+    titulo: 'Eliminar categoría',
+    mensaje: `¿Querés quitar “${item.nombre}” de las opciones disponibles? Los movimientos anteriores conservarán esta categoría y podrás recuperarla más adelante.`,
+    textoConfirmar: 'Eliminar categoría',
     destructiva: true,
   });
   if (!confirmado) return;
 
   const finalizarCarga = activarCargaBoton(boton, 'Eliminando…');
-  mostrarEstadoOperacion(`Eliminando ${etiqueta}…`, 'cargando');
+  mostrarEstadoOperacion('Eliminando categoría…', 'cargando');
   try {
-    if (tipo === 'categoria') await eliminarCategoria(item.id);
-    else await eliminarMedioPago(item.id);
+    await eliminarCategoria(item.id);
     mostrarEstadoOperacion(`“${item.nombre}” se quitó de las opciones nuevas. El historial se conservó.`, 'correcto');
     renderizarAdministracionCatalogos();
   } catch (error) {
-    console.error('No se pudo eliminar la opción del catálogo:', error);
+    console.error('No se pudo eliminar la categoría:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
   } finally {
     finalizarCarga();
   }
 }
 
-async function restaurarOpcionCatalogo(item, tipo, boton) {
-  const etiqueta = tipo === 'categoria' ? 'categoría' : 'medio de pago';
+async function restaurarCategoria(item, boton) {
   const confirmado = await solicitarConfirmacion({
-    titulo: `Recuperar ${etiqueta}`,
+    titulo: 'Recuperar categoría',
     mensaje: `¿Querés volver a habilitar “${item.nombre}”? Se recuperará la opción anterior, sin crear un duplicado.`,
-    textoConfirmar: 'Recuperar opción',
+    textoConfirmar: 'Recuperar categoría',
   });
   if (!confirmado) return;
 
   const finalizarCarga = activarCargaBoton(boton, 'Recuperando…');
-  mostrarEstadoOperacion(`Recuperando ${etiqueta}…`, 'cargando');
+  mostrarEstadoOperacion('Recuperando categoría…', 'cargando');
   try {
-    const resultado = tipo === 'categoria'
-      ? await crearOReactivarCategoria(item.nombre)
-      : await crearOReactivarMedioPago(item.nombre);
+    const resultado = await crearOReactivarCategoria(item.nombre);
     mostrarEstadoOperacion(`“${resultado.nombre}” volvió a estar disponible.`, 'correcto');
     renderizarAdministracionCatalogos();
   } catch (error) {
-    console.error('No se pudo recuperar la opción del catálogo:', error);
+    console.error('No se pudo recuperar la categoría:', error);
     mostrarEstadoOperacion(obtenerMensajeDeError(error), 'error');
   } finally {
     finalizarCarga();
@@ -866,44 +869,38 @@ async function restaurarOpcionCatalogo(item, tipo, boton) {
 }
 
 function actualizarSelectorCategorias(idSeleccionado = elementos.categoriaGasto.value) {
-  const opcionesVisibles = categorias.filter((item) => item.activo || item.id === idSeleccionado);
-  cargarOpcionesSelect(elementos.categoriaGasto, opcionesVisibles, 'Seleccioná una categoría', idSeleccionado);
-  actualizarVisibilidadCamposPersonalizados();
-}
-
-function actualizarSelectorMedios(idSeleccionado = elementos.medioPagoGasto.value) {
-  const opcionesVisibles = mediosPago.filter((item) => item.activo || item.id === idSeleccionado);
-  cargarOpcionesSelect(elementos.medioPagoGasto, opcionesVisibles, 'Seleccioná un medio de pago', idSeleccionado);
-  actualizarVisibilidadCamposPersonalizados();
-}
-
-function cargarOpcionesSelect(select, opciones, textoInicial, idSeleccionado = '') {
+  const opcionesVisibles = categorias.filter((item) => {
+    if (item.id === 'otros') return true;
+    return (item.activo && item.visibleEnFormulario !== false) || item.id === idSeleccionado;
+  });
+  opcionesVisibles.sort((a, b) => {
+    if (a.id === 'otros') return 1;
+    if (b.id === 'otros') return -1;
+    return (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre, 'es-AR');
+  });
   const fragmento = document.createDocumentFragment();
   const opcionInicial = document.createElement('option');
   opcionInicial.value = '';
-  opcionInicial.textContent = textoInicial;
+  opcionInicial.textContent = 'Seleccioná una categoría';
   opcionInicial.disabled = true;
   fragmento.append(opcionInicial);
 
-  for (const item of opciones) {
+  opcionesVisibles.forEach((item) => {
     const opcion = document.createElement('option');
     opcion.value = item.id;
-    opcion.textContent = item.activo ? item.nombre : `${item.nombre} (eliminada)`;
+    opcion.textContent = item.id === 'otros' ? 'Agregar otra categoría' : item.nombre;
     opcion.disabled = !item.activo && item.id !== idSeleccionado;
     fragmento.append(opcion);
-  }
-
-  select.replaceChildren(fragmento);
-  select.value = idSeleccionado || '';
+  });
+  elementos.categoriaGasto.replaceChildren(fragmento);
+  elementos.categoriaGasto.value = idSeleccionado || '';
+  actualizarVisibilidadCamposPersonalizados();
 }
 
 function actualizarVisibilidadCamposPersonalizados() {
-  const esCategoriaOtros = elementos.categoriaGasto.value === 'otros';
-  const esMedioOtros = elementos.medioPagoGasto.value === 'otros';
-  elementos.contenedorCategoriaPersonalizada.hidden = !esCategoriaOtros;
-  elementos.contenedorMedioPersonalizado.hidden = !esMedioOtros;
-  elementos.categoriaPersonalizada.required = esCategoriaOtros;
-  elementos.medioPersonalizado.required = esMedioOtros;
+  const esCategoriaEspecial = elementos.categoriaGasto.value === 'otros';
+  elementos.contenedorCategoriaPersonalizada.hidden = !esCategoriaEspecial;
+  elementos.categoriaPersonalizada.required = esCategoriaEspecial;
 }
 
 function renderizarPanelSueldos() {
@@ -1030,17 +1027,20 @@ async function guardarSueldoDesdeFormulario(evento) {
 
 function renderizarIngresosAdicionales() {
   elementos.cantidadIngresosAdicionales.textContent = String(ingresosAdicionales.length);
+  elementos.cantidadIngresosAdicionales.hidden = ingresosAdicionales.length === 0;
   elementos.listaIngresosAdicionales.replaceChildren();
 
   if (cargandoIngresos) {
+    elementos.listaIngresosAdicionales.hidden = false;
     elementos.listaIngresosAdicionales.append(crearMensajeCargando('Consultando ingresos…'));
     return;
   }
 
   if (ingresosAdicionales.length === 0) {
-    elementos.listaIngresosAdicionales.append(crearMensajeVacio('Todavía no hay ingresos adicionales en este mes.'));
+    elementos.listaIngresosAdicionales.hidden = true;
     return;
   }
+  elementos.listaIngresosAdicionales.hidden = false;
 
   const fragmento = document.createDocumentFragment();
   for (const ingreso of ingresosAdicionales) {
@@ -1296,6 +1296,7 @@ function actualizarBalanceMensual() {
   if (cargandoGastos || cargandoMes || cargandoIngresos) {
     elementos.totalSueldos.textContent = '—';
     elementos.totalIngresosAdicionales.textContent = '—';
+    elementos.tarjetaIngresosAdicionales.hidden = true;
     elementos.totalGastosMes.textContent = '—';
     elementos.saldoDisponible.textContent = '—';
     return;
@@ -1309,6 +1310,7 @@ function actualizarBalanceMensual() {
 
   elementos.totalSueldos.textContent = formatearMoneda(resumen.totalSueldos);
   elementos.totalIngresosAdicionales.textContent = formatearMoneda(resumen.totalIngresosAdicionales);
+  elementos.tarjetaIngresosAdicionales.hidden = ingresosAdicionales.length === 0;
   elementos.totalGastosMes.textContent = formatearMoneda(resumen.totalGastos);
   elementos.saldoDisponible.textContent = formatearMoneda(resumen.saldoDisponible);
   elementos.tarjetaSaldoDisponible.classList.toggle('tarjeta-resumen--negativo', resumen.saldoDisponible < 0);
@@ -1332,45 +1334,41 @@ function obtenerFiltrosActuales() {
   return {
     categoriaId: elementos.filtroCategoria.value,
     responsable: elementos.filtroPersona.value,
-    medioPagoId: elementos.filtroMedioPago.value,
     montoMinimo: elementos.filtroMontoMinimo.value,
     montoMaximo: elementos.filtroMontoMaximo.value,
     fechaDesde: elementos.filtroFechaDesde.value,
     fechaHasta: elementos.filtroFechaHasta.value,
     orden: elementos.filtroOrden.value,
-    nombresCategorias: Object.fromEntries(categorias.map((item) => [item.id, item.nombre])),
-    nombresMediosPago: Object.fromEntries(mediosPago.map((item) => [item.id, item.nombre])),
+    nombresCategorias: Object.fromEntries(categorias.map((item) => [item.id, nombreVisibleCategoria(item)])),
   };
+}
+
+function nombreVisibleCategoria(item) {
+  return item?.id === 'otros' ? 'Agregar otra categoría' : (item?.nombre || 'Categoría no disponible');
 }
 
 function actualizarOpcionesFiltros() {
   const valorCategoria = elementos.filtroCategoria.value;
-  const valorMedio = elementos.filtroMedioPago.value;
-  const construir = (select, catalogo, etiquetaTodos, seleccionado) => {
-    select.replaceChildren();
-    const opcionTodos = document.createElement('option');
-    opcionTodos.value = '';
-    opcionTodos.textContent = etiquetaTodos;
-    select.append(opcionTodos);
-    catalogo
-      .filter((item) => item.id !== 'otros')
-      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es-AR'))
-      .forEach((item) => {
-        const opcion = document.createElement('option');
-        opcion.value = item.id;
-        opcion.textContent = item.activo ? item.nombre : `${item.nombre} (inactiva)`;
-        select.append(opcion);
-      });
-    select.value = seleccionado;
-  };
-  construir(elementos.filtroCategoria, categorias, 'Todas', valorCategoria);
-  construir(elementos.filtroMedioPago, mediosPago, 'Todos', valorMedio);
+  elementos.filtroCategoria.replaceChildren();
+  const opcionTodas = document.createElement('option');
+  opcionTodas.value = '';
+  opcionTodas.textContent = 'Todas';
+  elementos.filtroCategoria.append(opcionTodas);
+  categorias
+    .filter((item) => item.id !== 'otros')
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es-AR'))
+    .forEach((item) => {
+      const opcion = document.createElement('option');
+      opcion.value = item.id;
+      opcion.textContent = item.activo ? item.nombre : `${item.nombre} (inactiva)`;
+      elementos.filtroCategoria.append(opcion);
+    });
+  elementos.filtroCategoria.value = valorCategoria;
 }
 
 function limpiarFiltros() {
   elementos.filtroCategoria.value = '';
   elementos.filtroPersona.value = '';
-  elementos.filtroMedioPago.value = '';
   elementos.filtroMontoMinimo.value = '';
   elementos.filtroMontoMaximo.value = '';
   elementos.filtroFechaDesde.value = '';
@@ -1427,7 +1425,6 @@ function renderizarGastos() {
 const DEFINICIONES_GRAFICOS = {
   categorias: { titulo: 'Gastos por categoría', descripcion: 'Distribución de los gastos del mes seleccionado según su categoría.' },
   personas: { titulo: 'Gastos por persona', descripcion: 'Comparación de los gastos realizados por Mauri y Ro.' },
-  medios: { titulo: 'Gastos por medio de pago', descripcion: 'Distribución de los gastos según el medio utilizado.' },
   semanal: { titulo: 'Evolución semanal', descripcion: 'Gastos agrupados en semanas de lunes a domingo.' },
   mensual: { titulo: 'Evolución mensual', descripcion: 'Comparación de ingresos totales, gastos y saldo disponible de los últimos meses.' },
   'ingresos-gastos': { titulo: 'Ingresos vs. gastos', descripcion: 'Comparación de los ingresos y gastos del mes seleccionado.' },
@@ -1571,12 +1568,6 @@ function renderizarGraficoActivo() {
     renderizarListaBarras(datos, 'lista-grafico-barras--personas');
     return;
   }
-  if (tipoGraficoActivo === 'medios') {
-    const datos = agruparImportesPor(gastosMes, (gasto) => mediosPago.find((item) => item.id === gasto.medioPagoId)?.nombre || 'Medio no disponible')
-      .map((dato) => ({ etiqueta: dato.clave, monto: dato.monto }));
-    renderizarListaBarras(datos);
-    return;
-  }
   if (tipoGraficoActivo === 'semanal') {
     const datos = agruparGastosPorSemana(gastosMes, periodoSeleccionado)
       .map((grupo) => ({ etiqueta: grupo.etiqueta, monto: grupo.monto }));
@@ -1665,13 +1656,12 @@ function crearTarjetaGasto(gasto) {
   const titulo = document.createElement('strong');
   titulo.className = 'tarjeta-movimiento__categoria';
   const categoria = categorias.find((item) => item.id === gasto.categoriaId);
-  titulo.textContent = categoria?.nombre || 'Categoría no disponible';
+  titulo.textContent = nombreVisibleCategoria(categoria);
 
   const detalle = document.createElement('p');
   detalle.className = 'tarjeta-movimiento__detalle';
-  const medio = mediosPago.find((item) => item.id === gasto.medioPagoId);
   const responsable = gasto.responsable === 'mauri' ? 'Mauri' : 'Ro';
-  detalle.textContent = `${formatearFecha(gasto.fecha)} · ${medio?.nombre || 'Medio no disponible'} · ${responsable}`;
+  detalle.textContent = `${formatearFecha(gasto.fecha)} · ${responsable}`;
   contenido.append(titulo, detalle);
 
   const columnaImporte = document.createElement('div');
@@ -1715,35 +1705,30 @@ function crearMensajeCargando(texto) {
   return mensaje;
 }
 
-async function resolverOpcionPersonalizada(tipo, nombreIngresado) {
+async function resolverCategoriaPersonalizada(nombreIngresado) {
   const nombre = nombreIngresado.trim();
   const normalizado = normalizarNombre(nombre);
-  if (!normalizado) throw new Error('Completá el nombre de la opción nueva.');
-  if (normalizado === 'otros') throw new Error('“Otros” es una opción reservada. Escribí otro nombre.');
+  if (!normalizado) throw new Error('Completá el nombre de la categoría nueva.');
+  if (normalizado === 'otros' || normalizado === 'agregar otra categoria') {
+    throw new Error('Ese nombre está reservado para la opción «Agregar otra categoría».');
+  }
 
-  const catalogo = tipo === 'categoria' ? categorias : mediosPago;
-  const existente = catalogo.find((item) => item.nombreNormalizado === normalizado || normalizarNombre(item.nombre) === normalizado);
+  const existente = categorias.find((item) => item.nombreNormalizado === normalizado || normalizarNombre(item.nombre) === normalizado);
   if (existente?.activo) {
-    mostrarEstadoOperacion(`“${existente.nombre}” ya existe. Se utilizará la opción existente.`, 'aviso');
+    mostrarEstadoOperacion(`“${existente.nombre}” ya existe. Se utilizará esa categoría; su visibilidad no se modificó.`, 'aviso');
     return existente.id;
   }
 
   try {
-    const resultado = tipo === 'categoria'
-      ? await crearOReactivarCategoria(nombre)
-      : await crearOReactivarMedioPago(nombre);
+    const resultado = await crearOReactivarCategoria(nombre);
     return resultado.id;
   } catch (error) {
-    const actualizado = tipo === 'categoria'
-      ? await obtenerCategorias({ incluirInactivas: true })
-      : await obtenerMediosPago({ incluirInactivos: true });
+    const actualizado = await obtenerCategorias({ incluirInactivas: true });
     const coincidencia = actualizado.find((item) => normalizarNombre(item.nombre) === normalizado && item.activo);
     if (coincidencia) return coincidencia.id;
     const coincidenciaInactiva = actualizado.find((item) => normalizarNombre(item.nombre) === normalizado && !item.activo);
     if (coincidenciaInactiva) {
-      const reactivada = tipo === 'categoria'
-        ? await crearOReactivarCategoria(nombre)
-        : await crearOReactivarMedioPago(nombre);
+      const reactivada = await crearOReactivarCategoria(nombre);
       return reactivada.id;
     }
     throw error;
@@ -1755,7 +1740,6 @@ function obtenerDatosFormularioGasto() {
     monto: elementos.montoGasto.value,
     fecha: elementos.fechaGasto.value,
     categoriaId: elementos.categoriaGasto.value,
-    medioPagoId: elementos.medioPagoGasto.value,
     responsable: elementos.responsableGasto.value,
   };
 }
@@ -1766,8 +1750,8 @@ async function guardarGastoDesdeFormulario(evento) {
 
   const estaEditando = Boolean(gastoEnEdicion);
   const datos = obtenerDatosFormularioGasto();
-  if (!datos.categoriaId || !datos.medioPagoId) {
-    mostrarEstadoOperacion('Seleccioná una categoría y un medio de pago.', 'error');
+  if (!datos.categoriaId) {
+    mostrarEstadoOperacion('Seleccioná una categoría.', 'error');
     return;
   }
   if (estaEditando && !(await solicitarConfirmacion({
@@ -1781,10 +1765,7 @@ async function guardarGastoDesdeFormulario(evento) {
 
   try {
     if (datos.categoriaId === 'otros') {
-      datos.categoriaId = await resolverOpcionPersonalizada('categoria', elementos.categoriaPersonalizada.value);
-    }
-    if (datos.medioPagoId === 'otros') {
-      datos.medioPagoId = await resolverOpcionPersonalizada('medio', elementos.medioPersonalizado.value);
+      datos.categoriaId = await resolverCategoriaPersonalizada(elementos.categoriaPersonalizada.value);
     }
 
     let periodoDestino;
@@ -1814,7 +1795,6 @@ function comenzarEdicion(gasto) {
   elementos.montoGasto.value = String(gasto.monto);
   elementos.fechaGasto.value = gasto.fecha;
   actualizarSelectorCategorias(gasto.categoriaId);
-  actualizarSelectorMedios(gasto.medioPagoId);
   elementos.responsableGasto.value = gasto.responsable;
   elementos.botonGuardarGasto.textContent = 'Guardar cambios';
   elementos.botonCancelarEdicion.hidden = false;
@@ -1853,9 +1833,7 @@ function prepararFormularioNuevo() {
   elementos.responsableGasto.value = obtenerPersonaPorCorreo(usuarioActivo?.email) || 'mauri';
   elementos.montoGasto.value = '';
   elementos.categoriaPersonalizada.value = '';
-  elementos.medioPersonalizado.value = '';
   actualizarSelectorCategorias('');
-  actualizarSelectorMedios('');
   elementos.botonGuardarGasto.innerHTML = 'Guardar gasto';
   elementos.botonCancelarEdicion.hidden = true;
 }
@@ -1961,10 +1939,7 @@ elementos.botonCerrarAdministracion.addEventListener('click', () => elementos.di
 elementos.dialogoAdministracionCatalogos.addEventListener('click', (evento) => {
   if (evento.target === elementos.dialogoAdministracionCatalogos) elementos.dialogoAdministracionCatalogos.close();
 });
-elementos.botonAdminCategorias.addEventListener('click', () => cambiarVistaAdministracionCatalogos('categorias'));
-elementos.botonAdminMedios.addEventListener('click', () => cambiarVistaAdministracionCatalogos('medios'));
-elementos.formularioNuevaCategoria.addEventListener('submit', (evento) => guardarNuevaOpcionCatalogo(evento, 'categoria'));
-elementos.formularioNuevoMedio.addEventListener('submit', (evento) => guardarNuevaOpcionCatalogo(evento, 'medio'));
+elementos.formularioNuevaCategoria.addEventListener('submit', guardarNuevaOpcionCatalogo);
 
 elementos.botonVistaCarga.addEventListener('click', () => mostrarVista('carga'));
 elementos.botonVistaConsulta.addEventListener('click', () => mostrarVista('consulta'));
@@ -1979,7 +1954,7 @@ elementos.selectorCantidadMeses.addEventListener('change', () => {
   if (tipoGraficoActivo === 'mensual' && graficosDesplegados) prepararObservadoresGraficoMensual();
 });
 const controlesFiltro = [
-  elementos.filtroCategoria, elementos.filtroPersona, elementos.filtroMedioPago,
+  elementos.filtroCategoria, elementos.filtroPersona,
   elementos.filtroMontoMinimo, elementos.filtroMontoMaximo,
   elementos.filtroFechaDesde, elementos.filtroFechaHasta, elementos.filtroOrden,
 ];
@@ -1993,10 +1968,6 @@ elementos.botonCancelarEdicion.addEventListener('click', cancelarEdicion);
 elementos.categoriaGasto.addEventListener('change', () => {
   actualizarVisibilidadCamposPersonalizados();
   if (elementos.categoriaGasto.value !== 'otros') elementos.categoriaPersonalizada.value = '';
-});
-elementos.medioPagoGasto.addEventListener('change', () => {
-  actualizarVisibilidadCamposPersonalizados();
-  if (elementos.medioPagoGasto.value !== 'otros') elementos.medioPersonalizado.value = '';
 });
 elementos.selectorMes.addEventListener('change', () => {
   if (elementos.selectorMes.value) cambiarPeriodoConsultado(elementos.selectorMes.value);

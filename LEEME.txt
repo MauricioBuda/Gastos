@@ -1,12 +1,21 @@
-PROYECTO GASTOS — VERSIÓN BASE DE ETAPA 6
+PROYECTO GASTOS — VERSIÓN BASE DE ETAPA 7
 
-Esta entrega agrega la administración visual de categorías y medios de pago sobre la versión 5.1 validada por el usuario.
+Esta entrega parte de la versión 6.1 validada por el usuario e incorpora:
+- Categorías ocultables desde Administración mediante el botón del ojo.
+- La opción especial «Agregar otra categoría» siempre al final del selector.
+- Categorías nuevas ocultas hasta que el usuario decida mostrarlas.
+- Tarjeta de ingresos adicionales visible solamente si hay registros.
+- Retiro de medios de pago de la interfaz, filtros, administración, gráficos y cálculos.
+- Conservación intacta de campos de medio de pago presentes en gastos históricos.
+- Notificaciones centradas con fondo desenfocado.
 
 Leé primero:
-- LEEME_ETAPA_6.txt
-- documentacion/ETAPA_6_ADMINISTRACION_CATALOGOS.md
+- LEEME_ETAPA_7.txt
+- documentacion/ETAPA_7_AJUSTES_CATEGORIAS_E_INGRESOS.md
 - documentacion/MODELO_DE_DATOS.md
 
-Extraé el ZIP en la raíz del proyecto Vite. Conservá package.json, package-lock.json, node_modules y .env. No se agregan dependencias ni reglas nuevas de Firestore.
+Extraé el ZIP en la raíz del proyecto Vite. Conservá package.json, package-lock.json, node_modules, .env y tu public/favicon.png. No se agregan dependencias.
 
-El favicon permanece preparado en index.html con la referencia /favicon.png; colocá el archivo definitivo en public/favicon.png.
+ATENCIÓN: esta etapa actualiza firestore.rules. Publicá el nuevo contenido desde Firebase > Firestore Database > Reglas. Las reglas conservan el campo histórico de medios de pago en gastos antiguos, pero dejan de exponer las antiguas colecciones de catálogo al cliente.
+
+El favicon sigue preparado en index.html con la referencia /favicon.png.

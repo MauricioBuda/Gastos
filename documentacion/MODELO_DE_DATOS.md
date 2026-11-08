@@ -18,10 +18,11 @@ No se guarda una cuenta de usuario por gasto. `responsable` identifica a quien r
 | `monto` | entero | Pesos argentinos, sin centavos; debe ser mayor que cero. |
 | `fecha` | texto `AAAA-MM-DD` | Fecha editable. Determina el mes al que pertenece el gasto. |
 | `categoriaId` | texto | ID estable del documento de `categorias`. |
-| `medioPagoId` | texto | ID estable del documento de `mediosPago`. |
 | `responsable` | texto | `mauri` o `ro`. |
 | `creadoEn` | timestamp | Momento técnico de creación. No se muestra en pantalla. |
 | `actualizadoEn` | timestamp | Última modificación. |
+
+Los gastos nuevos no guardan medio de pago. Algunos documentos históricos conservan el campo `medioPagoId`, pero la aplicación actual no lo lee, no lo muestra, no lo filtra y no lo utiliza en ningún cálculo o gráfico. Al editar un gasto antiguo, el campo se conserva intacto en Firestore por compatibilidad; no se realizan limpiezas ni eliminaciones masivas.
 
 La colección es global, no hay una colección de gastos por mes. Para consultar un mes se filtra `fecha` entre el primer día del mes y el primer día del mes siguiente. Si se cambia la fecha de un gasto, cambia automáticamente el mes en el que aparece.
 
@@ -51,22 +52,23 @@ Cada ingreso adicional es un documento independiente, por eso se pueden cargar v
 
 ### `categorias/{categoriaId}`
 
-Campos: `nombre`, `nombreNormalizado`, `activo`, `orden`, `protegida`, `inicial`, `creadoEn`, `actualizadoEn`.
+Campos: `nombre`, `nombreNormalizado`, `activo`, `visibleEnFormulario`, `orden`, `protegida`, `inicial`, `creadoEn`, `actualizadoEn`.
 
-Las categorías iniciales son Alquiler, Expensas, Verdulería, Supermercado, Postres, Cenas, Nafta, Tarjeta de crédito y Otros. Solamente `Otros` está protegida. Las demás se pueden renombrar o desactivar.
+Las categorías iniciales son Alquiler, Expensas, Verdulería, Supermercado, Postres, Cenas, Nafta, Tarjeta de crédito y la opción especial que la interfaz presenta como «Agregar otra categoría». Esta última está protegida y siempre permanece al final del selector. Las categorías nuevas se guardan inicialmente con `visibleEnFormulario = false`; su aparición en el formulario se controla desde Administración mediante el botón del ojo. Ocultar una categoría no elimina el catálogo ni sus gastos históricos.
 
-### `mediosPago/{medioPagoId}`
+Las opciones se eliminan mediante baja lógica (`activo = false`). Sus documentos e índices se conservan. Si luego se intenta crear una opción con el mismo nombre normalizado, se reactiva el documento anterior.
 
-Usa los mismos campos que categorías. Efectivo, Débito y Otros están protegidos. Los medios personalizados se pueden renombrar o desactivar.
+### Colecciones históricas de medios de pago
+
+Las colecciones `mediosPago` e `indicesMediosPago` pueden seguir existiendo en Firestore con los documentos que se crearon en etapas anteriores. La aplicación actual no las consulta, modifica ni elimina y sus reglas de acceso desde el cliente fueron retiradas. No forman parte de la lógica funcional vigente.
 
 ## Índices internos de nombres
 
 ### `indicesCategorias/{hashNombre}`
-### `indicesMediosPago/{hashNombre}`
 
-Guardan `referenciaId`, `nombreNormalizado` y `actualizadoEn`. Permiten reservar el nombre normalizado y evitar duplicados incluso si Mauri y Ro intentan crear la misma opción al mismo tiempo.
+Guardan `referenciaId`, `nombreNormalizado` y `actualizadoEn`. Permiten reservar el nombre normalizado y evitar duplicados incluso si Mauri y Ro intentan crear la misma categoría al mismo tiempo.
 
-La normalización elimina espacios al principio y al final, ignora mayúsculas/minúsculas y elimina diacríticos. Por eso `Verduleria`, `verdulería` y ` VERDULERIA ` se consideran el mismo nombre.
+La normalización elimina espacios al principio y al final, ignora mayúsculas/minúsculas y elimina diacríticos. Por eso `Verduleria`, `verdulería` y ` VERDULERIA ` se consideran el mismo nombre. La visibilidad en el selector es independiente de la existencia del catálogo y del histórico.
 
 Al desactivar una opción, se conserva tanto el documento del catálogo como su índice. Si se intenta crear otra vez con ese nombre, se reactiva el registro anterior. Al renombrar, se actualiza el documento del catálogo y se mueve el índice de unicidad; como los gastos guardan el ID del catálogo, los históricos muestran el nombre actualizado.
 

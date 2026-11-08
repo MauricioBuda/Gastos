@@ -35,49 +35,29 @@ function validarDatosGasto(datos) {
   if (typeof datos.categoriaId !== 'string' || !datos.categoriaId.trim()) {
     throw new Error('Seleccioná una categoría.');
   }
-  if (typeof datos.medioPagoId !== 'string' || !datos.medioPagoId.trim()) {
-    throw new Error('Seleccioná un medio de pago.');
-  }
-
   return {
     monto,
     fecha,
     categoriaId: datos.categoriaId,
-    medioPagoId: datos.medioPagoId,
     responsable: datos.responsable,
   };
 }
 
-async function comprobarOpcionCatalogo(coleccion, id, permitirInactiva = false) {
-  const referencia = doc(db, coleccion, id);
+async function comprobarCategoriaDeGasto(datos, gastoAnterior = null) {
+  const categoriaSinCambios = gastoAnterior?.categoriaId === datos.categoriaId;
+  const referencia = doc(db, 'categorias', datos.categoriaId);
   const resultado = await getDoc(referencia);
 
-  if (!resultado.exists()) {
-    throw new Error('La categoría o el medio de pago seleccionado ya no existe. Actualizá la pantalla.');
+  if (!resultado.exists()) throw new Error('La categoría seleccionada ya no existe. Actualizá la pantalla.');
+  if (!resultado.data().activo && !categoriaSinCambios) {
+    throw new Error('La categoría seleccionada ya no está disponible para nuevas cargas.');
   }
-
-  const datos = resultado.data();
-  if (!datos.activo && !permitirInactiva) {
-    throw new Error('La categoría o el medio de pago seleccionado ya no está disponible para nuevas cargas.');
-  }
-
-  return datos;
-}
-
-async function comprobarReferenciasDeGasto(datos, gastoAnterior = null) {
-  const categoriaSinCambios = gastoAnterior?.categoriaId === datos.categoriaId;
-  const medioSinCambios = gastoAnterior?.medioPagoId === datos.medioPagoId;
-
-  await Promise.all([
-    comprobarOpcionCatalogo('categorias', datos.categoriaId, categoriaSinCambios),
-    comprobarOpcionCatalogo('mediosPago', datos.medioPagoId, medioSinCambios),
-  ]);
 }
 
 export async function crearGasto(datos) {
   asegurarBaseDeDatos();
   const gasto = validarDatosGasto(datos);
-  await comprobarReferenciasDeGasto(gasto);
+  await comprobarCategoriaDeGasto(gasto);
 
   const referencia = await addDoc(collection(db, COLECCION_GASTOS), {
     ...gasto,
@@ -97,7 +77,7 @@ export async function editarGasto(id, datos) {
   if (!existente.exists()) throw new Error('El gasto que intentás editar ya no existe.');
 
   const gasto = validarDatosGasto(datos);
-  await comprobarReferenciasDeGasto(gasto, existente.data());
+  await comprobarCategoriaDeGasto(gasto, existente.data());
 
   await updateDoc(referencia, {
     ...gasto,

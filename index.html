@@ -24,7 +24,7 @@
           <span class="marca-aplicacion__texto">Gastos</span>
         </a>
         <div class="encabezado__usuario" id="encabezado-usuario" hidden>
-          <button class="boton-administrar-catalogos" id="boton-administrar-catalogos" type="button" aria-label="Administrar categorías y medios de pago" aria-haspopup="dialog" aria-controls="dialogo-administracion-catalogos">
+          <button class="boton-administrar-catalogos" id="boton-administrar-catalogos" type="button" aria-label="Administrar categorías" aria-haspopup="dialog" aria-controls="dialogo-administracion-catalogos">
             <span class="boton-administrar-catalogos__icono" aria-hidden="true">⚙</span>
             <span class="boton-administrar-catalogos__texto">Administrar</span>
           </button>
@@ -111,17 +111,6 @@
                 </div>
 
                 <div class="campo-formulario">
-                  <label for="medio-pago-gasto">Medio de pago <span aria-hidden="true">*</span></label>
-                  <select id="medio-pago-gasto" name="medioPagoId" required>
-                    <option value="">Cargando medios de pago…</option>
-                  </select>
-                  <div class="campo-personalizado" id="contenedor-medio-personalizado" hidden>
-                    <label for="medio-personalizado">Nuevo medio de pago</label>
-                    <input id="medio-personalizado" type="text" maxlength="60" placeholder="Ej.: Mercado Pago" autocomplete="off" />
-                  </div>
-                </div>
-
-                <div class="campo-formulario">
                   <label for="responsable-gasto">Quién realizó el gasto <span aria-hidden="true">*</span></label>
                   <select id="responsable-gasto" name="responsable" required>
                     <option value="mauri">Mauri</option>
@@ -193,10 +182,6 @@
                     </select>
                   </div>
                   <div class="campo-formulario campo-formulario--compacto">
-                    <label for="filtro-medio-pago">Medio de pago</label>
-                    <select id="filtro-medio-pago"><option value="">Todos</option></select>
-                  </div>
-                  <div class="campo-formulario campo-formulario--compacto">
                     <label for="filtro-monto-minimo">Importe mínimo</label>
                     <input id="filtro-monto-minimo" type="number" inputmode="numeric" min="0" step="1" placeholder="Sin mínimo" />
                   </div>
@@ -223,8 +208,6 @@
                       <option value="categoria-desc">Categoría: Z a A</option>
                       <option value="persona-asc">Persona: Mauri primero</option>
                       <option value="persona-desc">Persona: Ro primero</option>
-                      <option value="medio-asc">Medio de pago: A a Z</option>
-                      <option value="medio-desc">Medio de pago: Z a A</option>
                     </select>
                   </div>
                 </div>
@@ -266,7 +249,7 @@
                               </div>
                             </article>
               
-                            <article class="tarjeta-resumen">
+                            <article class="tarjeta-resumen" id="tarjeta-ingresos-adicionales" hidden>
                               <span class="tarjeta-resumen__etiqueta">Ingresos adicionales</span>
                               <strong class="tarjeta-resumen__valor" id="total-ingresos-adicionales">—</strong>
                             </article>
@@ -297,8 +280,8 @@
               
                           <details class="panel-desplegable panel-ingresos-adicionales" id="panel-ingresos-adicionales">
                             <summary>
-                              <span>Ingresos adicionales</span>
-                              <strong id="cantidad-ingresos-adicionales">0</strong>
+                              <span>Agregar o administrar ingresos adicionales</span>
+                              <strong id="cantidad-ingresos-adicionales" hidden></strong>
                             </summary>
                             <form id="formulario-ingreso-adicional" class="formulario-ingreso-adicional" novalidate>
                               <div class="campo-formulario campo-formulario--compacto">
@@ -311,9 +294,7 @@
                               </div>
                               <button class="boton-secundario boton-agregar-ingreso" id="boton-agregar-ingreso" type="submit">Agregar ingreso</button>
                             </form>
-                            <div class="lista-ingresos-adicionales" id="lista-ingresos-adicionales" aria-live="polite">
-                              <p class="mensaje-vacio">Todavía no hay ingresos adicionales en este mes.</p>
-                            </div>
+                            <div class="lista-ingresos-adicionales" id="lista-ingresos-adicionales" aria-live="polite" hidden></div>
                           </details>
               
                           <section class="panel-observacion-saldo" aria-labelledby="titulo-observacion-saldo">
@@ -347,7 +328,6 @@
               <div class="grupo-botones-graficos" id="grupo-botones-graficos" hidden>
                 <button class="boton-grafico" type="button" data-tipo-grafico="categorias">Por categoría</button>
                 <button class="boton-grafico" type="button" data-tipo-grafico="personas">Por persona</button>
-                <button class="boton-grafico" type="button" data-tipo-grafico="medios">Por medio de pago</button>
                 <button class="boton-grafico" type="button" data-tipo-grafico="semanal">Evolución semanal</button>
                 <button class="boton-grafico" type="button" data-tipo-grafico="mensual">Evolución mensual</button>
                 <button class="boton-grafico" type="button" data-tipo-grafico="ingresos-gastos">Ingresos vs. gastos</button>
@@ -388,18 +368,13 @@
           <header class="encabezado-administracion-catalogos">
             <div>
               <span class="etiqueta-superior">CONFIGURACIÓN</span>
-              <h2 id="titulo-administracion-catalogos">Categorías y medios de pago</h2>
-              <p>Administrá las opciones que aparecen al cargar un gasto.</p>
+              <h2 id="titulo-administracion-catalogos">Administrar categorías</h2>
+              <p>Elegí qué categorías aparecen en el formulario de gastos.</p>
             </div>
             <button class="boton-cerrar-dialogo" id="boton-cerrar-administracion" type="button" aria-label="Cerrar administración">×</button>
           </header>
 
-          <nav class="pestanas-administracion-catalogos" aria-label="Tipo de opciones">
-            <button class="pestana-catalogo pestana-catalogo--activa" id="boton-admin-categorias" type="button" data-vista-catalogo="categorias" aria-pressed="true">Categorías</button>
-            <button class="pestana-catalogo" id="boton-admin-medios" type="button" data-vista-catalogo="medios" aria-pressed="false">Medios de pago</button>
-          </nav>
-
-          <section class="panel-administracion-catalogo" id="panel-admin-categorias" aria-labelledby="boton-admin-categorias">
+          <section class="panel-administracion-catalogo" id="panel-admin-categorias" aria-labelledby="titulo-administracion-catalogos">
             <form class="formulario-nueva-opcion-catalogo" id="formulario-nueva-categoria" novalidate>
               <div class="campo-formulario campo-formulario--compacto">
                 <label for="nombre-nueva-categoria">Agregar categoría</label>
@@ -421,29 +396,7 @@
             </details>
           </section>
 
-          <section class="panel-administracion-catalogo" id="panel-admin-medios" aria-labelledby="boton-admin-medios" hidden>
-            <form class="formulario-nueva-opcion-catalogo" id="formulario-nuevo-medio" novalidate>
-              <div class="campo-formulario campo-formulario--compacto">
-                <label for="nombre-nuevo-medio">Agregar medio de pago</label>
-                <input id="nombre-nuevo-medio" type="text" maxlength="60" placeholder="Ej.: Mercado Pago" autocomplete="off" required />
-              </div>
-              <button class="boton-principal" id="boton-guardar-nuevo-medio" type="submit">Agregar</button>
-            </form>
-            <div class="encabezado-lista-catalogo">
-              <h3>Opciones disponibles</h3>
-              <span id="cantidad-medios-activos">0</span>
-            </div>
-            <div class="lista-administracion-catalogos" id="lista-medios-activos" aria-live="polite"></div>
-            <details class="panel-opciones-inactivas" id="panel-medios-inactivos">
-              <summary>
-                <span>Opciones eliminadas</span>
-                <span class="contador-opciones-inactivas" id="cantidad-medios-inactivos">0</span>
-              </summary>
-              <div class="lista-administracion-catalogos lista-administracion-catalogos--inactivas" id="lista-medios-inactivos"></div>
-            </details>
-          </section>
-
-          <p class="ayuda-administracion-catalogos">Las opciones fijas no se pueden modificar. Al renombrar una opción, el nuevo nombre también se verá en los movimientos anteriores. Las opciones eliminadas conservan su historial y se pueden recuperar.</p>
+          <p class="ayuda-administracion-catalogos">El ojo controla si una categoría aparece al cargar gastos. Las opciones fijas no se pueden renombrar ni eliminar. Las categorías eliminadas conservan su historial y se pueden recuperar.</p>
         </div>
       </dialog>
 
@@ -485,7 +438,7 @@
       </dialog>
     </div>
 
-    <div class="contenedor-notificaciones" id="contenedor-notificaciones" role="region" aria-label="Notificaciones" aria-live="polite" aria-relevant="additions text"></div>
+    <dialog class="contenedor-notificaciones" id="contenedor-notificaciones" aria-label="Notificaciones" aria-live="polite" aria-relevant="additions text"></dialog>
 
     <script type="module" src="/src/main.js"></script>
   </body>

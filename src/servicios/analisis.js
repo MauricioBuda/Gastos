@@ -17,7 +17,6 @@ export function filtrarGastos(gastos = [], filtros = {}) {
   const resultado = gastos.filter((gasto) => {
     if (filtros.categoriaId && gasto.categoriaId !== filtros.categoriaId) return false;
     if (filtros.responsable && gasto.responsable !== filtros.responsable) return false;
-    if (filtros.medioPagoId && gasto.medioPagoId !== filtros.medioPagoId) return false;
     if (minimo !== null && Number(gasto.monto) < minimo) return false;
     if (maximo !== null && Number(gasto.monto) > maximo) return false;
     if (desde && gasto.fecha < desde) return false;
@@ -27,7 +26,6 @@ export function filtrarGastos(gastos = [], filtros = {}) {
 
   const orden = filtros.orden || 'fecha-desc';
   const nombresCategorias = filtros.nombresCategorias || {};
-  const nombresMediosPago = filtros.nombresMediosPago || {};
   const compararTexto = (valorA, valorB) => String(valorA || '').localeCompare(String(valorB || ''), 'es-AR', { sensitivity: 'base' });
 
   resultado.sort((a, b) => {
@@ -38,8 +36,6 @@ export function filtrarGastos(gastos = [], filtros = {}) {
     if (orden === 'categoria-desc') return compararTexto(nombresCategorias[b.categoriaId] || b.categoriaId, nombresCategorias[a.categoriaId] || a.categoriaId);
     if (orden === 'persona-asc') return compararTexto(a.responsable, b.responsable);
     if (orden === 'persona-desc') return compararTexto(b.responsable, a.responsable);
-    if (orden === 'medio-asc') return compararTexto(nombresMediosPago[a.medioPagoId] || a.medioPagoId, nombresMediosPago[b.medioPagoId] || b.medioPagoId);
-    if (orden === 'medio-desc') return compararTexto(nombresMediosPago[b.medioPagoId] || b.medioPagoId, nombresMediosPago[a.medioPagoId] || a.medioPagoId);
     return b.fecha.localeCompare(a.fecha);
   });
   return resultado;
@@ -120,6 +116,6 @@ export function agruparGastosPorSemana(gastos = [], periodo) {
 }
 
 export function contarFiltrosActivos(filtros = {}) {
-  return ['categoriaId', 'responsable', 'medioPagoId', 'montoMinimo', 'montoMaximo', 'fechaDesde', 'fechaHasta']
+  return ['categoriaId', 'responsable', 'montoMinimo', 'montoMaximo', 'fechaDesde', 'fechaHasta']
     .filter((campo) => filtros[campo] !== '' && filtros[campo] !== null && filtros[campo] !== undefined).length;
 }

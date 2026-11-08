@@ -34,28 +34,21 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/categorias/$(id)).data.activo == true;
     }
 
-    function medioPagoExiste(id) {
-      return exists(/databases/$(database)/documents/mediosPago/$(id));
-    }
-
-    function medioPagoActivo(id) {
-      return medioPagoExiste(id)
-        && get(/databases/$(database)/documents/mediosPago/$(id)).data.activo == true;
-    }
-
     function gastoValido(datos) {
+      // medioPagoId se admite únicamente para conservar el dato histórico de gastos antiguos.
+      // Los gastos nuevos ya no lo guardan y la aplicación no vuelve a consultarlo.
       return datos.keys().hasOnly([
           'monto', 'fecha', 'categoriaId', 'medioPagoId', 'responsable',
           'creadoEn', 'actualizadoEn'
         ])
         && datos.keys().hasAll([
-          'monto', 'fecha', 'categoriaId', 'medioPagoId', 'responsable',
+          'monto', 'fecha', 'categoriaId', 'responsable',
           'creadoEn', 'actualizadoEn'
         ])
         && montoValido(datos.monto)
         && fechaValida(datos.fecha)
         && datos.categoriaId is string
-        && datos.medioPagoId is string
+        && (!('medioPagoId' in datos.keys()) || datos.medioPagoId is string)
         && datos.responsable in ['mauri', 'ro']
         && datos.creadoEn is timestamp
         && datos.actualizadoEn is timestamp;
@@ -93,7 +86,7 @@ service cloud.firestore {
     function catalogoValido(datos) {
       return datos.keys().hasOnly([
           'nombre', 'nombreNormalizado', 'activo', 'orden', 'protegida',
-          'inicial', 'creadoEn', 'actualizadoEn'
+          'inicial', 'creadoEn', 'actualizadoEn', 'visibleEnFormulario'
         ])
         && datos.keys().hasAll([
           'nombre', 'nombreNormalizado', 'activo', 'orden', 'protegida',
@@ -109,7 +102,8 @@ service cloud.firestore {
         && datos.protegida is bool
         && datos.inicial is bool
         && datos.creadoEn is timestamp
-        && datos.actualizadoEn is timestamp;
+        && datos.actualizadoEn is timestamp
+        && (!('visibleEnFormulario' in datos.keys()) || datos.visibleEnFormulario is bool);
     }
 
     function indiceValido(datos) {
@@ -126,17 +120,16 @@ service cloud.firestore {
       allow read: if usuarioAutorizado();
       allow create: if usuarioAutorizado()
         && gastoValido(request.resource.data)
-        && categoriaActiva(request.resource.data.categoriaId)
-        && medioPagoActivo(request.resource.data.medioPagoId);
+        && !('medioPagoId' in request.resource.data.keys())
+        && categoriaActiva(request.resource.data.categoriaId);
       allow update: if usuarioAutorizado()
         && gastoValido(request.resource.data)
         && request.resource.data.creadoEn == resource.data.creadoEn
         && categoriaExiste(request.resource.data.categoriaId)
-        && medioPagoExiste(request.resource.data.medioPagoId)
         && (request.resource.data.categoriaId == resource.data.categoriaId
           || categoriaActiva(request.resource.data.categoriaId))
-        && (request.resource.data.medioPagoId == resource.data.medioPagoId
-          || medioPagoActivo(request.resource.data.medioPagoId));
+        // No se altera el antiguo medioPagoId: se conserva únicamente como dato histórico.
+        && request.resource.data.get('medioPagoId', null) == resource.data.get('medioPagoId', null);
       allow delete: if usuarioAutorizado();
     }
 
@@ -176,31 +169,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Medios de pago: Efectivo, Débito y Otros son opciones protegidas.
-    match /mediosPago/{medioPagoId} {
-      allow read: if usuarioAutorizado();
-      allow create: if usuarioAutorizado() && catalogoValido(request.resource.data);
-      allow update: if usuarioAutorizado()
-        && catalogoValido(request.resource.data)
-        && resource.data.protegida == false
-        && request.resource.data.protegida == resource.data.protegida
-        && request.resource.data.inicial == resource.data.inicial
-        && request.resource.data.creadoEn == resource.data.creadoEn;
-      allow delete: if false;
-    }
-
-    // Índices internos para evitar nombres duplicados incluso si ambos usuarios
-    // intentan crear la misma categoría o medio de pago al mismo tiempo.
+    // Índices internos para evitar nombres de categorías duplicados incluso
+    // si ambos usuarios intentan crear la misma categoría al mismo tiempo.
     match /indicesCategorias/{indiceId} {
       allow read: if usuarioAutorizado();
       allow create, update: if usuarioAutorizado() && indiceValido(request.resource.data);
       allow delete: if usuarioAutorizado();
     }
 
-    match /indicesMediosPago/{indiceId} {
-      allow read: if usuarioAutorizado();
-      allow create, update: if usuarioAutorizado() && indiceValido(request.resource.data);
-      allow delete: if usuarioAutorizado();
-    }
   }
 }

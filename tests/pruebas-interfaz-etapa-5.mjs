@@ -8,7 +8,7 @@ const css = await readFile(new URL('../src/estilos.css', import.meta.url), 'utf8
 for (const id of [
   'boton-subvista-movimientos', 'boton-subvista-dashboard', 'boton-subvista-graficos',
   'subvista-movimientos', 'subvista-dashboard', 'subvista-graficos', 'selector-mes',
-  'filtro-categoria', 'filtro-persona', 'filtro-medio-pago', 'filtro-monto-minimo',
+  'filtro-categoria', 'filtro-persona', 'filtro-monto-minimo',
   'filtro-monto-maximo', 'filtro-fecha-desde', 'filtro-fecha-hasta', 'filtro-orden',
   'grupo-botones-graficos', 'panel-grafico', 'selector-cantidad-meses',
 ]) {
@@ -18,8 +18,10 @@ for (const id of [
 
 assert.match(html, /<link rel="icon" type="image\/png" href="\/favicon\.png"\s*\/>/, 'Debe quedar preparada la línea del favicon.');
 assert.match(html, /Últimos 3 meses[\s\S]*Últimos 6 meses[\s\S]*Últimos 12 meses/, 'Debe ofrecer períodos de 3, 6 y 12 meses.');
-assert.match(html, /value="categoria-asc"[\s\S]*value="persona-asc"[\s\S]*value="medio-asc"/, 'Debe permitir ordenar por categoría, persona y medio de pago.');
-assert.match(html, /data-tipo-grafico="categorias"[\s\S]*data-tipo-grafico="personas"[\s\S]*data-tipo-grafico="medios"[\s\S]*data-tipo-grafico="semanal"[\s\S]*data-tipo-grafico="mensual"[\s\S]*data-tipo-grafico="ingresos-gastos"/, 'Deben estar presentes los seis tipos de gráficos.');
+assert.match(html, /value="categoria-asc"[\s\S]*value="persona-asc"/, 'Debe permitir ordenar por categoría y persona.');
+assert.doesNotMatch(html, /medio.?pago|mediosPago/i, 'La interfaz no debe mostrar campos ni filtros de medios de pago.');
+assert.match(html, /data-tipo-grafico="categorias"[\s\S]*data-tipo-grafico="personas"[\s\S]*data-tipo-grafico="semanal"[\s\S]*data-tipo-grafico="mensual"[\s\S]*data-tipo-grafico="ingresos-gastos"/, 'Deben estar presentes los cinco gráficos restantes.');
+assert.doesNotMatch(html, /data-tipo-grafico="medios"/, 'No debe existir un gráfico por medios de pago.');
 assert.match(main, /function filtrarGastos|filtrarGastos\(gastosMes/, 'La lista debe aplicar filtros combinables.');
 assert.match(main, /detenerObservadoresGraficoMensual\(\)/, 'Los observadores históricos deben poder detenerse al salir de gráficos.');
 assert.match(main, /let canceladorObservadorGastosGrafico = null;/, 'El cancelador de la consulta mensual debe estar declarado.');

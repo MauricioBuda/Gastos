@@ -11,9 +11,7 @@ import { normalizarNombre, prepararNombre } from './validaciones.js';
 import { crearIdIndiceNombre } from './indicesCatalogos.js';
 
 const COLECCION_CATEGORIAS = 'categorias';
-const COLECCION_MEDIOS = 'mediosPago';
 const INDICES_CATEGORIAS = 'indicesCategorias';
-const INDICES_MEDIOS = 'indicesMediosPago';
 
 export const categoriasIniciales = [
   { id: 'alquiler', nombre: 'Alquiler', orden: 10, protegida: false },
@@ -27,26 +25,23 @@ export const categoriasIniciales = [
   { id: 'otros', nombre: 'Otros', orden: 90, protegida: true },
 ];
 
-export const mediosPagoIniciales = [
-  { id: 'efectivo', nombre: 'Efectivo', orden: 10, protegida: true },
-  { id: 'debito', nombre: 'Débito', orden: 20, protegida: true },
-  { id: 'otros', nombre: 'Otros', orden: 30, protegida: true },
-];
-
 function asegurarBaseDeDatos() {
   if (!db) throw new Error('Firebase no está configurado. Revisá el archivo .env.');
 }
 
-function compararCatalogos(a, b) {
+function compararCategorias(a, b) {
+  if (a.id === 'otros') return 1;
+  if (b.id === 'otros') return -1;
   return (a.orden ?? 999) - (b.orden ?? 999)
     || a.nombre.localeCompare(b.nombre, 'es');
 }
 
-function prepararDocumentoCatalogo(definicion, nombre) {
+function prepararDocumentoCategoria(definicion, nombre, visibleEnFormulario = true) {
   return {
     nombre,
     nombreNormalizado: normalizarNombre(nombre),
     activo: true,
+    visibleEnFormulario,
     orden: definicion.orden,
     protegida: definicion.protegida,
     inicial: true,
@@ -55,31 +50,43 @@ function prepararDocumentoCatalogo(definicion, nombre) {
   };
 }
 
+function normalizarDocumentoCategoria(documento) {
+  const datos = documento.data();
+  return {
+    id: documento.id,
+    ...datos,
+    // Compatibilidad con categorías creadas antes de incorporar el control del ojo.
+    // Esas opciones permanecen visibles para no alterar los hábitos ya existentes.
+    visibleEnFormulario: typeof datos.visibleEnFormulario === 'boolean'
+      ? datos.visibleEnFormulario
+      : true,
+  };
+}
+
 /**
- * Crea los catálogos base una sola vez. Si ya existen, no pisa nombres,
- * orden ni estados que los usuarios hayan modificado previamente.
+ * Prepara únicamente el catálogo de categorías.
+ * Los catálogos históricos de medios de pago y sus índices permanecen intactos
+ * en Firestore; esta implementación no los consulta ni modifica.
+ * También migra categorías anteriores: las ya existentes quedan visibles,
+ * mientras que las categorías nuevas se crean ocultas hasta que el usuario
+ * active su visibilidad desde Administración.
  */
 export async function inicializarCatalogosBase() {
   asegurarBaseDeDatos();
 
-  const definiciones = [
-    ...categoriasIniciales.map((item) => ({ ...item, coleccion: COLECCION_CATEGORIAS, indices: INDICES_CATEGORIAS })),
-    ...mediosPagoIniciales.map((item) => ({ ...item, coleccion: COLECCION_MEDIOS, indices: INDICES_MEDIOS })),
-  ];
-
-  const referenciasDocumentos = definiciones.map((item) => doc(db, item.coleccion, item.id));
+  const referenciasDocumentos = categoriasIniciales.map((item) => doc(db, COLECCION_CATEGORIAS, item.id));
 
   await runTransaction(db, async (transaccion) => {
     const documentos = await Promise.all(
       referenciasDocumentos.map((referencia) => transaccion.get(referencia)),
     );
 
-    const datosParaIndices = await Promise.all(definiciones.map(async (definicion, indice) => {
+    const datosParaIndices = await Promise.all(categoriasIniciales.map(async (definicion, indice) => {
       const existente = documentos[indice].exists() ? documentos[indice].data() : null;
       const nombreActual = existente?.nombre || definicion.nombre;
       const nombreNormalizado = normalizarNombre(nombreActual);
       const idIndice = await crearIdIndiceNombre(nombreActual);
-      const referenciaIndice = doc(db, definicion.indices, idIndice);
+      const referenciaIndice = doc(db, INDICES_CATEGORIAS, idIndice);
       return { definicion, existente, referenciaIndice, nombreActual, nombreNormalizado };
     }));
 
@@ -87,80 +94,71 @@ export async function inicializarCatalogosBase() {
       datosParaIndices.map((item) => transaccion.get(item.referenciaIndice)),
     );
 
+    // Todas las lecturas de la transacción se realizan antes de las escrituras.
     datosParaIndices.forEach((item, indice) => {
-      const idEsperado = item.definicion.id;
       const indiceActual = indicesExistentes[indice];
-
       if (indiceActual.exists()) {
         const referenciaActual = indiceActual.data().referenciaId;
-        if (referenciaActual !== idEsperado) {
-          throw new Error(`Conflicto al preparar el índice de "${item.nombreActual}". No se modificaron los catálogos.`);
+        if (referenciaActual !== item.definicion.id) {
+          throw new Error(`Conflicto al preparar el índice de "${item.nombreActual}". No se modificaron las categorías.`);
         }
       } else {
         transaccion.set(item.referenciaIndice, {
-          referenciaId: idEsperado,
+          referenciaId: item.definicion.id,
           nombreNormalizado: item.nombreNormalizado,
           actualizadoEn: serverTimestamp(),
         });
       }
 
+      const referenciaDocumento = doc(db, COLECCION_CATEGORIAS, item.definicion.id);
       if (!item.existente) {
-        const referenciaDocumento = doc(db, item.definicion.coleccion, item.definicion.id);
-        transaccion.set(referenciaDocumento, prepararDocumentoCatalogo(item.definicion, item.definicion.nombre));
+        transaccion.set(referenciaDocumento, prepararDocumentoCategoria(item.definicion, item.definicion.nombre, true));
+      } else if (typeof item.existente.visibleEnFormulario !== 'boolean' && !item.existente.protegida) {
+        // Las categorías preexistentes estaban disponibles en el selector antes de esta actualización.
+        transaccion.update(referenciaDocumento, {
+          visibleEnFormulario: true,
+          actualizadoEn: serverTimestamp(),
+        });
       }
     });
   });
 
-  return {
-    categorias: categoriasIniciales.length,
-    mediosPago: mediosPagoIniciales.length,
-  };
+  return { categorias: categoriasIniciales.length };
 }
 
-async function listarCatalogo(coleccion, soloActivos) {
+async function listarCategorias(soloActivas) {
   asegurarBaseDeDatos();
-  const resultado = await getDocs(collection(db, coleccion));
+  const resultado = await getDocs(collection(db, COLECCION_CATEGORIAS));
   return resultado.docs
-    .map((documento) => ({ id: documento.id, ...documento.data() }))
-    .filter((item) => !soloActivos || item.activo)
-    .sort(compararCatalogos);
+    .map(normalizarDocumentoCategoria)
+    .filter((item) => !soloActivas || item.activo)
+    .sort(compararCategorias);
 }
 
 export function obtenerCategorias({ incluirInactivas = false } = {}) {
-  return listarCatalogo(COLECCION_CATEGORIAS, !incluirInactivas);
-}
-
-export function obtenerMediosPago({ incluirInactivos = false } = {}) {
-  return listarCatalogo(COLECCION_MEDIOS, !incluirInactivos);
+  return listarCategorias(!incluirInactivas);
 }
 
 export function observarCategorias(callback, alError, { incluirInactivas = false } = {}) {
   asegurarBaseDeDatos();
   return onSnapshot(collection(db, COLECCION_CATEGORIAS), (resultado) => {
     const categorias = resultado.docs
-      .map((documento) => ({ id: documento.id, ...documento.data() }))
+      .map(normalizarDocumentoCategoria)
       .filter((item) => incluirInactivas || item.activo)
-      .sort(compararCatalogos);
+      .sort(compararCategorias);
     callback(categorias);
   }, alError);
 }
 
-export function observarMediosPago(callback, alError, { incluirInactivos = false } = {}) {
+async function crearOReactivarOpcion(nombreIngresado) {
   asegurarBaseDeDatos();
-  return onSnapshot(collection(db, COLECCION_MEDIOS), (resultado) => {
-    const medios = resultado.docs
-      .map((documento) => ({ id: documento.id, ...documento.data() }))
-      .filter((item) => incluirInactivos || item.activo)
-      .sort(compararCatalogos);
-    callback(medios);
-  }, alError);
-}
+  const { nombre, nombreNormalizado } = prepararNombre(nombreIngresado, 'La categoría');
+  if (nombreNormalizado === 'otros' || nombreNormalizado === 'agregar otra categoria') {
+    throw new Error('Ese nombre está reservado para la opción «Agregar otra categoría».');
+  }
 
-async function crearOReactivarOpcion({ nombreIngresado, coleccion, coleccionIndices, etiqueta }) {
-  asegurarBaseDeDatos();
-  const { nombre, nombreNormalizado } = prepararNombre(nombreIngresado, etiqueta);
   const idIndice = await crearIdIndiceNombre(nombreNormalizado);
-  const referenciaIndice = doc(db, coleccionIndices, idIndice);
+  const referenciaIndice = doc(db, INDICES_CATEGORIAS, idIndice);
 
   return runTransaction(db, async (transaccion) => {
     const indice = await transaccion.get(referenciaIndice);
@@ -168,18 +166,18 @@ async function crearOReactivarOpcion({ nombreIngresado, coleccion, coleccionIndi
     if (indice.exists()) {
       const datosIndice = indice.data();
       if (datosIndice.nombreNormalizado !== nombreNormalizado) {
-        throw new Error('Se detectó una colisión interna al comprobar el nombre. No se guardó la opción.');
+        throw new Error('Se detectó una colisión interna al comprobar el nombre. No se guardó la categoría.');
       }
 
-      const referenciaExistente = doc(db, coleccion, datosIndice.referenciaId);
+      const referenciaExistente = doc(db, COLECCION_CATEGORIAS, datosIndice.referenciaId);
       const documentoExistente = await transaccion.get(referenciaExistente);
       if (!documentoExistente.exists()) {
-        throw new Error('El índice de esta opción no encuentra su registro. Contactá con soporte antes de continuar.');
+        throw new Error('El índice de esta categoría no encuentra su registro. Contactá con soporte antes de continuar.');
       }
 
       const datosExistentes = documentoExistente.data();
       if (datosExistentes.activo) {
-        throw new Error(`Ya existe una opción llamada "${datosExistentes.nombre}".`);
+        throw new Error(`Ya existe una categoría llamada "${datosExistentes.nombre}".`);
       }
       if (datosExistentes.protegida) {
         throw new Error('Esta opción especial no puede modificarse.');
@@ -189,18 +187,22 @@ async function crearOReactivarOpcion({ nombreIngresado, coleccion, coleccionIndi
         activo: true,
         actualizadoEn: serverTimestamp(),
       });
-      transaccion.update(referenciaIndice, {
-        actualizadoEn: serverTimestamp(),
-      });
+      transaccion.update(referenciaIndice, { actualizadoEn: serverTimestamp() });
 
-      return { id: referenciaExistente.id, nombre: datosExistentes.nombre, reactivada: true };
+      return {
+        id: referenciaExistente.id,
+        nombre: datosExistentes.nombre,
+        reactivada: true,
+        visibleEnFormulario: datosExistentes.visibleEnFormulario !== false,
+      };
     }
 
-    const nuevaReferencia = doc(collection(db, coleccion));
+    const nuevaReferencia = doc(collection(db, COLECCION_CATEGORIAS));
     transaccion.set(nuevaReferencia, {
       nombre,
       nombreNormalizado,
       activo: true,
+      visibleEnFormulario: false,
       orden: 100,
       protegida: false,
       inicial: false,
@@ -213,24 +215,27 @@ async function crearOReactivarOpcion({ nombreIngresado, coleccion, coleccionIndi
       actualizadoEn: serverTimestamp(),
     });
 
-    return { id: nuevaReferencia.id, nombre, reactivada: false };
+    return { id: nuevaReferencia.id, nombre, reactivada: false, visibleEnFormulario: false };
   });
 }
 
-async function editarOpcion({ id, nombreIngresado, coleccion, coleccionIndices, etiqueta }) {
+async function editarOpcion(id, nombreIngresado) {
   asegurarBaseDeDatos();
-  const { nombre, nombreNormalizado } = prepararNombre(nombreIngresado, etiqueta);
+  const { nombre, nombreNormalizado } = prepararNombre(nombreIngresado, 'La categoría');
+  if (nombreNormalizado === 'otros' || nombreNormalizado === 'agregar otra categoria') {
+    throw new Error('Ese nombre está reservado para la opción «Agregar otra categoría».');
+  }
   const nuevoIdIndice = await crearIdIndiceNombre(nombreNormalizado);
-  const referenciaDocumento = doc(db, coleccion, id);
-  const referenciaNuevoIndice = doc(db, coleccionIndices, nuevoIdIndice);
+  const referenciaDocumento = doc(db, COLECCION_CATEGORIAS, id);
+  const referenciaNuevoIndice = doc(db, INDICES_CATEGORIAS, nuevoIdIndice);
 
   return runTransaction(db, async (transaccion) => {
     const documento = await transaccion.get(referenciaDocumento);
-    if (!documento.exists()) throw new Error('La opción que intentás editar ya no existe.');
+    if (!documento.exists()) throw new Error('La categoría que intentás editar ya no existe.');
 
     const datosActuales = documento.data();
     if (datosActuales.protegida) throw new Error('Esta opción es fija y no se puede editar.');
-    if (!datosActuales.activo) throw new Error('No se puede editar una opción que está eliminada.');
+    if (!datosActuales.activo) throw new Error('No se puede editar una categoría que está eliminada.');
 
     const indiceNuevo = await transaccion.get(referenciaNuevoIndice);
     if (indiceNuevo.exists()) {
@@ -238,14 +243,11 @@ async function editarOpcion({ id, nombreIngresado, coleccion, coleccionIndices, 
       if (datosIndice.nombreNormalizado !== nombreNormalizado) {
         throw new Error('Se detectó una colisión interna al comprobar el nombre. No se guardó el cambio.');
       }
-      if (datosIndice.referenciaId !== id) {
-        throw new Error(`Ya existe otra opción llamada "${nombre}".`);
-      }
+      if (datosIndice.referenciaId !== id) throw new Error(`Ya existe otra categoría llamada "${nombre}".`);
     }
 
-    const nombreAnteriorNormalizado = normalizarNombre(datosActuales.nombre);
-    const idIndiceAnterior = await crearIdIndiceNombre(nombreAnteriorNormalizado);
-    const referenciaIndiceAnterior = doc(db, coleccionIndices, idIndiceAnterior);
+    const idIndiceAnterior = await crearIdIndiceNombre(normalizarNombre(datosActuales.nombre));
+    const referenciaIndiceAnterior = doc(db, INDICES_CATEGORIAS, idIndiceAnterior);
     const indiceAnterior = await transaccion.get(referenciaIndiceAnterior);
 
     transaccion.update(referenciaDocumento, {
@@ -270,71 +272,51 @@ async function editarOpcion({ id, nombreIngresado, coleccion, coleccionIndices, 
   });
 }
 
-async function eliminarOpcion({ id, coleccion }) {
+export function crearOReactivarCategoria(nombre) {
+  return crearOReactivarOpcion(nombre);
+}
+
+export function editarCategoria(id, nombre) {
+  return editarOpcion(id, nombre);
+}
+
+export async function eliminarCategoria(id) {
   asegurarBaseDeDatos();
-  const referenciaDocumento = doc(db, coleccion, id);
+  const referenciaDocumento = doc(db, COLECCION_CATEGORIAS, id);
 
   return runTransaction(db, async (transaccion) => {
     const documento = await transaccion.get(referenciaDocumento);
-    if (!documento.exists()) throw new Error('La opción que intentás eliminar ya no existe.');
+    if (!documento.exists()) throw new Error('La categoría que intentás eliminar ya no existe.');
     const datos = documento.data();
-
     if (datos.protegida) throw new Error('Esta opción es fija y no se puede eliminar.');
     if (!datos.activo) return { id, yaEstabaInactiva: true };
 
-    // Baja lógica: se conserva el documento para que los gastos históricos
-    // sigan pudiendo mostrar el nombre y para permitir recuperarlo después.
     transaccion.update(referenciaDocumento, {
       activo: false,
       actualizadoEn: serverTimestamp(),
     });
-
     return { id, yaEstabaInactiva: false };
   });
 }
 
-export function crearOReactivarCategoria(nombre) {
-  return crearOReactivarOpcion({
-    nombreIngresado: nombre,
-    coleccion: COLECCION_CATEGORIAS,
-    coleccionIndices: INDICES_CATEGORIAS,
-    etiqueta: 'La categoría',
+export async function actualizarVisibilidadCategoria(id, visibleEnFormulario) {
+  asegurarBaseDeDatos();
+  if (typeof visibleEnFormulario !== 'boolean') {
+    throw new Error('La visibilidad de la categoría debe ser visible u oculta.');
+  }
+  if (id === 'otros') throw new Error('La opción «Agregar otra categoría» siempre debe permanecer disponible.');
+
+  const referenciaDocumento = doc(db, COLECCION_CATEGORIAS, id);
+  await runTransaction(db, async (transaccion) => {
+    const documento = await transaccion.get(referenciaDocumento);
+    if (!documento.exists()) throw new Error('La categoría ya no existe.');
+    const datos = documento.data();
+    if (!datos.activo) throw new Error('Primero tenés que recuperar la categoría para cambiar su visibilidad.');
+
+    transaccion.update(referenciaDocumento, {
+      visibleEnFormulario,
+      actualizadoEn: serverTimestamp(),
+    });
   });
-}
-
-export function editarCategoria(id, nombre) {
-  return editarOpcion({
-    id,
-    nombreIngresado: nombre,
-    coleccion: COLECCION_CATEGORIAS,
-    coleccionIndices: INDICES_CATEGORIAS,
-    etiqueta: 'La categoría',
-  });
-}
-
-export function eliminarCategoria(id) {
-  return eliminarOpcion({ id, coleccion: COLECCION_CATEGORIAS });
-}
-
-export function crearOReactivarMedioPago(nombre) {
-  return crearOReactivarOpcion({
-    nombreIngresado: nombre,
-    coleccion: COLECCION_MEDIOS,
-    coleccionIndices: INDICES_MEDIOS,
-    etiqueta: 'El medio de pago',
-  });
-}
-
-export function editarMedioPago(id, nombre) {
-  return editarOpcion({
-    id,
-    nombreIngresado: nombre,
-    coleccion: COLECCION_MEDIOS,
-    coleccionIndices: INDICES_MEDIOS,
-    etiqueta: 'El medio de pago',
-  });
-}
-
-export function eliminarMedioPago(id) {
-  return eliminarOpcion({ id, coleccion: COLECCION_MEDIOS });
+  return { id, visibleEnFormulario };
 }

@@ -9,7 +9,8 @@ node tests/pruebas-etapa-5.mjs
 node tests/pruebas-interfaz-etapa-5.mjs
 node tests/pruebas-interfaz-etapa-6.mjs
 node tests/pruebas-interfaz-etapa-6-1.mjs
+node tests/pruebas-etapa-7.mjs
 
-Las pruebas no necesitan conectarse a Firebase ni modifican datos reales. Comprueban funciones de validación y cálculo, filtros, períodos, agrupaciones, administración de categorías y medios de pago, protección de opciones fijas, estructura HTML, selectores de JavaScript y orden de las secciones CSS.
+Las pruebas no necesitan conectarse a Firebase ni modifican datos reales. Comprueban validaciones y cálculos, filtros, períodos, agrupaciones, administración y visibilidad de categorías, estructura HTML, selectores de JavaScript, compatibilidad de gastos históricos y orden de las secciones CSS.
 
-Después de ejecutarlas, iniciá el servidor habitual con npm run dev y seguí documentacion/ETAPA_6_ADMINISTRACION_CATALOGOS.md para comprobar la integración real en el navegador.
+Después de ejecutarlas, iniciá el servidor habitual con npm run dev y seguí documentacion/ETAPA_7_AJUSTES_CATEGORIAS_E_INGRESOS.md para comprobar la integración real en el navegador.

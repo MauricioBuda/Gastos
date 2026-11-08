@@ -1,0 +1,23 @@
+GASTOS — ETAPA 7
+
+Esta actualización parte de la versión estable de la Etapa 6.1.
+
+Incluye:
+- Tarjeta de ingresos adicionales oculta si no hay registros.
+- Opción especial «Agregar otra categoría» al final del selector.
+- Categorías nuevas ocultas hasta que se active el ojo desde Administración.
+- Retiro completo de los medios de pago de la interfaz y de los cálculos.
+- Conservación sin modificación de los campos de medio de pago que existan en gastos históricos.
+- Notificaciones centradas con fondo desenfocado durante tres segundos.
+- Reglas Firestore sin acceso de cliente a las colecciones históricas de medios de pago.
+
+INSTALACIÓN
+1. Detené Vite con Ctrl + C.
+2. Hacé una copia de seguridad de la carpeta del proyecto.
+3. Extraé el ZIP directamente en la raíz del proyecto y permití reemplazar archivos.
+4. Conservá package.json, package-lock.json, node_modules, .env y tu public/favicon.png.
+5. Publicá el nuevo firestore.rules desde Firebase > Firestore Database > Reglas.
+6. Ejecutá los comandos de tests/INSTRUCCIONES.txt.
+7. Ejecutá npm run dev y completá documentacion/ETAPA_7_AJUSTES_CATEGORIAS_E_INGRESOS.md.
+
+No hace falta ejecutar npm install ni modificar las variables de entorno de Vercel.

@@ -16,21 +16,25 @@ const gastos = [
 ];
 
 const filtrados = filtrarGastos(gastos, {
-  categoriaId: 'super', responsable: 'ro', medioPagoId: 'debito',
+  categoriaId: 'super', responsable: 'ro',
   montoMinimo: '20000', montoMaximo: '30000',
   fechaDesde: '2026-11-01', fechaHasta: '2026-11-30', orden: 'fecha-desc',
 });
 assert.deepEqual(filtrados.map((gasto) => gasto.id), ['c']);
 assert.equal(contarFiltrosActivos({ categoriaId: 'super', responsable: 'ro', fechaDesde: '2026-11-01' }), 3);
+assert.equal(contarFiltrosActivos({ categoriaId: 'super', responsable: 'ro', medioPagoId: 'debito' }), 2, 'Un campo histórico de medio de pago no debe contar como filtro activo.');
+assert.deepEqual(
+  filtrarGastos(gastos, { responsable: 'ro' }).map((gasto) => gasto.id),
+  filtrarGastos(gastos.map(({ medioPagoId, ...gasto }) => gasto), { responsable: 'ro' }).map((gasto) => gasto.id),
+  'Los identificadores históricos de medios de pago no deben afectar los filtros.'
+);
 assert.deepEqual(filtrarGastos(gastos, { orden: 'monto-desc' }).map((gasto) => gasto.id), ['c', 'a', 'b', 'd']);
 
 const catalogosParaOrden = {
   nombresCategorias: { super: 'Supermercado', nafta: 'Nafta' },
-  nombresMediosPago: { debito: 'Débito', efectivo: 'Efectivo' },
 };
 assert.deepEqual(filtrarGastos(gastos, { ...catalogosParaOrden, orden: 'categoria-asc' }).map((gasto) => gasto.id), ['b', 'd', 'a', 'c']);
 assert.deepEqual(filtrarGastos(gastos, { ...catalogosParaOrden, orden: 'persona-asc' }).map((gasto) => gasto.id), ['a', 'd', 'b', 'c']);
-assert.deepEqual(filtrarGastos(gastos, { ...catalogosParaOrden, orden: 'medio-asc' }).map((gasto) => gasto.id), ['a', 'c', 'd', 'b']);
 assert.throws(() => filtrarGastos(gastos, { montoMinimo: '500', montoMaximo: '100' }), /mínimo no puede superar/);
 assert.throws(() => filtrarGastos(gastos, { fechaDesde: '2026-11-20', fechaHasta: '2026-11-10' }), /fecha inicial/);
 
@@ -67,4 +71,4 @@ assert.deepEqual(porCategoria, [
   { clave: 'nafta', monto: 8500 },
 ]);
 
-console.log('ETAPA 5: todas las pruebas de filtros y análisis fueron superadas.');
+console.log('ETAPA 5: filtros, análisis y compatibilidad con campos históricos ignorados superados.');

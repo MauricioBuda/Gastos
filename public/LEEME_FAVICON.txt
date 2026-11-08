@@ -1,0 +1,10 @@
+FAVICON DE GASTOS
+
+Cuando tengas tu icono, guardalo en esta carpeta con el nombre exacto:
+
+favicon.png
+
+La línea ya está preparada en index.html:
+<link rel="icon" type="image/png" href="/favicon.png" />
+
+No hace falta modificar el HTML si el archivo se llama favicon.png.
